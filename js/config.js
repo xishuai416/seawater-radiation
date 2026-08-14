@@ -9,6 +9,8 @@ const CONFIG = {
   OWNER: 'xishuai416',
   REPO: 'seawater-radiation',
   API_BASE: 'https://api.github.com',
+  // Gist raw 资源地址（不消耗 GitHub API rate limit）
+  GIST_RAW_URL: 'https://gist.githubusercontent.com/xishuai416/ada469ec18bdbbebf32b356ee3e4564e/raw/history.json',
 
   // 数据存储配置
   STORAGE_KEY: 'seawater_radiation_data',

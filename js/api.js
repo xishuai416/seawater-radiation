@@ -52,39 +52,72 @@ async function validateToken(token) {
 }
 
 /**
- * 获取数据（无需 Token 即可公开读取 Gist，如果有 Token 则带上，读取失败时回退到 localStorage）
+ * 获取数据（未登录用户有限尝试 REST API，触发 Rate Limit 时自动降级到 Raw Gist / CDN，确保不受 60次/小时 限制；登录用户使用 Token 读取）
  * @returns {Promise<Array>} 记录数组
  */
 async function loadData() {
   const token = getAuthToken();
   
-  // 构建请求头：未登录时不传 Authorization 也可以公开读取 public/secret Gist
-  const headers = {
-    'Accept': 'application/vnd.github.v3+json'
-  };
+  // 1. 如果有 Token，优先通过 GitHub REST API 获取最新版本
   if (token) {
-    headers['Authorization'] = `token ${token}`;
+    try {
+      const res = await fetch(`${CONFIG.API_BASE}/gists/${CONFIG.GIST_ID}`, {
+        headers: {
+          'Authorization': `token ${token}`,
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        if (data.files && data.files['history.json']) {
+          const parsed = JSON.parse(data.files['history.json'].content);
+          setStorageItem(CONFIG.STORAGE_KEY, parsed.records || []);
+          return parsed.records || [];
+        }
+      }
+    } catch (e) {
+      console.warn('使用 Token 从 Gist API 获取失败:', e);
+    }
   }
 
-  try {
-    const res = await fetch(`${CONFIG.API_BASE}/gists/${CONFIG.GIST_ID}`, { headers });
-    
-    if (res.ok) {
-      const data = await res.json();
-      if (data.files && data.files['history.json']) {
-        const parsed = JSON.parse(data.files['history.json'].content);
-        // 同步缓存到 localStorage
-        setStorageItem(CONFIG.STORAGE_KEY, parsed.records || []);
-        return parsed.records || [];
+  // 2. 未登录用户或 API 失败时，尝试 GitHub REST API（未认证）
+  if (!token) {
+    try {
+      const res = await fetch(`${CONFIG.API_BASE}/gists/${CONFIG.GIST_ID}`, {
+        headers: { 'Accept': 'application/vnd.github.v3+json' }
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        if (data.files && data.files['history.json']) {
+          const parsed = JSON.parse(data.files['history.json'].content);
+          setStorageItem(CONFIG.STORAGE_KEY, parsed.records || []);
+          return parsed.records || [];
+        }
+      } else {
+        console.warn(`Gist API 返回 ${res.status}（可能已触发 Rate Limit）`);
       }
-    } else {
-      console.warn(`Gist 请求返回状态码: ${res.status}`);
+    } catch (e) {
+      console.warn('Gist REST API 请求异常:', e);
+    }
+  }
+
+  // 3. 降级方案：从 Raw URL 获取数据（不占 REST API Rate Limit 额度，支持高并发/免登录访问）
+  try {
+    // 增加时间戳防强缓存
+    const rawUrl = `${CONFIG.GIST_RAW_URL}?_t=${Date.now()}`;
+    const rawRes = await fetch(rawUrl);
+    if (rawRes.ok) {
+      const parsed = await rawRes.json();
+      setStorageItem(CONFIG.STORAGE_KEY, parsed.records || []);
+      return parsed.records || [];
     }
   } catch (e) {
-    console.warn('从 Gist 获取失败，尝试回退:', e);
+    console.warn('从 Raw Gist 获取失败，回退到本地缓存:', e);
   }
   
-  // 回退到 localStorage
+  // 4. 最终回退到 localStorage 缓存
   return getStorageItem(CONFIG.STORAGE_KEY, []);
 }
 
