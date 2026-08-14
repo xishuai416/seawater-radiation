@@ -17,7 +17,7 @@
 ### Token 存储方式
 - ✅ 使用 **sessionStorage** 存储 Token（关闭浏览器自动清除）
 - ✅ 不硬编码 Token 在代码中
-- ⚠️ 密码仍使用 localStorage 备份（可选清除）
+- ⚠️ 密码硬编码在代码中（仅供本地使用）
 
 ### 安全建议
 1. 不要在公共电脑上保存登录状态
@@ -109,12 +109,6 @@ seawater-radiation/
 ├── index.html          # 主页（数据展示）
 ├── admin.html          # 录入页面（需登录）
 ├── test.html           # 测试数据生成
-├── api/                # API 代理目录
-│   ├── README.md
-│   └── index.html
-├── .github/
-│   └── workflows/
-│       └── api.yml     # GitHub Actions workflow
 ├── css/
 │   └── style.css       # 样式文件
 ├── js/
@@ -159,7 +153,7 @@ seawater-radiation/
    - 定期更换 Token
 
 2. **密码安全**
-   - 不在代码中硬编码密码
+   - 密码硬编码在代码中（仅供本地使用）
    - 使用强密码
    - 考虑使用多因素认证
 
