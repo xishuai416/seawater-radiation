@@ -55,7 +55,7 @@
         .login-btn {
             width: 100%;
             padding: 15px;
-            background: linear-gradient(135deg, #0288d1, #01579b);
+            background: linear-gradient(135deg, #2ea44d, #1a7f37);
             border: none;
             border-radius: 8px;
             color: #fff;
@@ -64,7 +64,7 @@
             transition: all 0.3s ease;
         }
         .login-btn:hover {
-            background: linear-gradient(135deg, #039be5, #0277bd);
+            background: linear-gradient(135deg, #3fb950, #238636);
         }
         .error-msg {
             color: #f44336;
@@ -151,52 +151,31 @@
 
     <div class="login-container">
         <div class="login-box" id="login-box">
-            <h2>🔐 身份验证</h2>
+            <h2>🔐 GitHub 认证</h2>
             
             <!-- 安全提示 -->
             <div class="security-notice">
                 <h4>🔒 安全说明</h4>
-                <p>• GitHub Token 仅存储在浏览器会话中（sessionStorage），关闭标签页后自动清除</p>
-                <p>• 密码存储在代码中（仅本地使用），建议定期更换</p>
+                <p>• GitHub Token 仅存储在浏览器会话中，关闭标签页后自动清除</p>
                 <p>• 请勿在公共电脑上保存登录状态</p>
+                <p>• Token 仅用于访问 GitHub Gist，无其他权限</p>
             </div>
 
             <!-- GitHub连接 -->
             <div class="github-connect">
-                <h3>🔗 GitHub 连接（推荐）</h3>
+                <h3>🔗 GitHub Token 登录</h3>
                 <p>输入GitHub Personal Access Token以同步数据到云端</p>
                 <div class="form-group">
                     <label for="github-token">GitHub Token</label>
                     <input type="password" id="github-token" placeholder="ghp_xxxxxxxxxxxx">
                 </div>
-                <button class="login-btn" style="background: linear-gradient(135deg, #2ea44d, #1a7f37);" onclick="connectGitHub()">连接GitHub</button>
+                <button class="login-btn" onclick="connectGitHub()">连接GitHub</button>
                 <div class="token-status disconnected" id="token-status">
                     <span class="status-dot"></span>
                     <span id="token-status-text">未连接</span>
                 </div>
             </div>
-
-            <div style="text-align: center; color: #78909c; margin: 20px 0;">或者</div>
-
-            <!-- 密码登录 -->
-            <h3 style="color: #90a4ae; margin-bottom: 15px; font-size: 0.9rem;">本地密码登录</h3>
-            <div class="form-group">
-                <label for="username">用户名</label>
-                <input type="text" id="username" placeholder="请输入用户名">
-            </div>
-            <div class="form-group">
-                <label for="password">密码</label>
-                <input type="password" id="password" placeholder="请输入密码">
-            </div>
-            <div class="form-group">
-                <label for="captcha">验证码</label>
-                <div style="display: flex; gap: 10px;">
-                    <input type="text" id="captcha" placeholder="请输入验证码" style="flex: 1;">
-                    <canvas id="captcha-canvas" width="100" height="45" style="border-radius: 8px; cursor: pointer;" title="点击刷新验证码"></canvas>
-                </div>
-            </div>
-            <button class="login-btn" onclick="verifyLogin()">登录</button>
-            <div class="error-msg" id="error-msg">用户名、密码或验证码错误</div>
+            
             <div class="back-link">
                 <a href="index.html">← 返回首页</a>
             </div>
