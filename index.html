@@ -58,6 +58,14 @@
         .github-status.disconnected {
             border: 1px solid #f44336;
         }
+        .github-status.loading {
+            border: 1px solid #ff9800;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
     </style>
 </head>
 <body>
@@ -69,9 +77,9 @@
     </header>
 
     <!-- GitHub状态指示 -->
-    <div class="github-status disconnected" id="github-status">
-        <span id="status-icon">⚪</span>
-        <span id="status-text">未连接</span>
+    <div class="github-status loading" id="github-status">
+        <span id="status-icon">⏳</span>
+        <span id="status-text">正在加载...</span>
     </div>
 
     <main class="container">

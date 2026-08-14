@@ -351,25 +351,32 @@
                 const newRecords = generateTestData_fromUtils(count);
                 const allRecords = [...history, ...newRecords];
                 
+                // 本地模式：直接写入 localStorage
                 setStorageItem(CONFIG.STORAGE_KEY, allRecords);
                 
-                try {
-                    await RadiationAPI.saveData({
-                        id: Date.now(),
-                        time: new Date().toISOString(),
-                        valueUsvMax: null,
-                        valueUsvAvg: null,
-                        valueCpm: null,
-                        sync: true
-                    });
-                } catch (e) {
-                    console.warn('GitHub同步失败:', e);
+                // 已登录模式：同时同步到 GitHub Gist
+                const token = RadiationAPI.getAuthToken();
+                if (token) {
+                    try {
+                        // 只同步新的记录（而非 dummy 记录）
+                        await RadiationAPI.saveData({
+                            id: Date.now(),
+                            time: new Date().toISOString(),
+                            valueUsvMax: newRecords[0].valueUsvMax,
+                            valueUsvAvg: newRecords[0].valueUsvAvg,
+                            valueCpm: newRecords[0].valueCpm
+                        });
+                    } catch (e) {
+                        console.warn('GitHub同步失败:', e);
+                        // 同步失败不影响本地数据
+                    }
                 }
                 
                 const resultEl = document.getElementById('test-result');
                 if (resultEl) {
+                    const modeText = token ? '✅ 已同步至GitHub' : '✅ 仅本地保存';
                     resultEl.className = 'success';
-                    resultEl.innerHTML = `✅ 成功生成 ${count} 条测试数据！<br>` +
+                    resultEl.innerHTML = `${modeText} 成功生成 ${count} 条测试数据！<br>` +
                         `当前总数据量: ${allRecords.length} 条<br>` +
                         `时间范围: ${new Date(allRecords[allRecords.length-1].time).toLocaleString()} - ${new Date(allRecords[0].time).toLocaleString()}`;
                 }
