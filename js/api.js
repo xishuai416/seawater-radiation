@@ -104,8 +104,11 @@ async function loadData() {
         const data = await res.json();
         if (data.files && data.files['history.json']) {
           const parsed = JSON.parse(data.files['history.json'].content);
-          setStorageItem(CONFIG.STORAGE_KEY, parsed.records || []);
-          return parsed.records || [];
+          // 只有当云端有数据时才覆盖本地
+          if (parsed.records && parsed.records.length > 0) {
+            setStorageItem(CONFIG.STORAGE_KEY, parsed.records);
+            return parsed.records;
+          }
         }
       }
     } catch (e) {
@@ -124,8 +127,11 @@ async function loadData() {
         const data = await res.json();
         if (data.files && data.files['history.json']) {
           const parsed = JSON.parse(data.files['history.json'].content);
-          setStorageItem(CONFIG.STORAGE_KEY, parsed.records || []);
-          return parsed.records || [];
+          // 只有当云端有数据时才覆盖本地
+          if (parsed.records && parsed.records.length > 0) {
+            setStorageItem(CONFIG.STORAGE_KEY, parsed.records);
+            return parsed.records;
+          }
         }
       }
     } catch (e) {
@@ -139,11 +145,14 @@ async function loadData() {
     const rawRes = await fetchWithRetry(rawUrl);
     if (rawRes.ok) {
       const parsed = await rawRes.json();
-      setStorageItem(CONFIG.STORAGE_KEY, parsed.records || []);
-      return parsed.records || [];
+      // 只有当云端有数据时才覆盖本地，避免清空本地数据
+      if (parsed.records && parsed.records.length > 0) {
+        setStorageItem(CONFIG.STORAGE_KEY, parsed.records);
+        return parsed.records;
+      }
     }
   } catch (e) {
-    console.warn('从 Raw Gist 获取失败，回退到本地缓存:', e);
+    console.warn('从 Raw Gist 获取失败，使用本地缓存:', e);
   }
   
   // 4. 最终回退到 localStorage 缓存
