@@ -5,6 +5,16 @@
     box-sizing: border-box;
 }
 
+:root {
+    --primary-color: #4fc3f7;
+    --secondary-color: #0288d1;
+    --warning-color: #ff9800;
+    --success-color: #4caf50;
+    --danger-color: #f44336;
+    --text-color: #fff;
+    --text-muted: #90a4ae;
+}
+
 body {
     font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
     background: linear-gradient(135deg, #1a3a5c 0%, #0d2137 100%);
@@ -238,4 +248,33 @@ footer p {
         bottom: 20px;
         right: 20px;
     }
+}
+
+/* 通知样式 */
+.notification {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 12px 24px;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 14px;
+    z-index: 9999;
+    animation: slideDown 0.3s ease;
+}
+
+.notification-success { background: #4caf50; }
+.notification-error { background: #f44336; }
+.notification-warning { background: #ff9800; }
+.notification-info { background: #2196f3; }
+
+@keyframes slideDown {
+    from { transform: translate(-50%, -100%); opacity: 0; }
+    to { transform: translate(-50%, 0); opacity: 1; }
+}
+
+@keyframes slideUp {
+    from { transform: translate(-50%, 0); opacity: 1; }
+    to { transform: translate(-50%, -100%); opacity: 0; }
 }

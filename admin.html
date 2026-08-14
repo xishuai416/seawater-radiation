@@ -30,7 +30,7 @@
         .login-box h2 {
             text-align: center;
             margin-bottom: 30px;
-            color: #4fc3f7;
+            color: var(--primary-color, #4fc3f7);
         }
         .form-group {
             margin-bottom: 20px;
@@ -198,7 +198,7 @@
             <button class="login-btn" onclick="submitData()">提交数据</button>
             <div class="error-msg" id="submit-msg"></div>
             <div class="back-link">
-                <a href="#" onclick="logout()">退出登录</a>
+                <a href="#" onclick="logout(); return false;">退出登录</a>
             </div>
         </div>
     </div>
@@ -209,6 +209,9 @@
         </div>
     </footer>
 
+    <!-- 引入模块 -->
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
     <script src="js/api.js"></script>
     <script src="js/admin.js"></script>
 </body>

@@ -1,32 +1,41 @@
-// API 代理 - 使用 GitHub Actions 作为后端
-// 注意：由于 GitHub Pages 是纯静态托管，我们采用混合方案
+/**
+ * 海水辐射值监测平台 - GitHub API 层
+ * 封装所有与 GitHub Gist 的交互逻辑
+ */
 
-const CONFIG = {
-  GIST_ID: 'ada469ec18bdbbebf32b356ee3e4564e',
-  OWNER: 'xishuai416',
-  REPO: 'seawater-radiation',
-  API_BASE: 'https://api.github.com'
-};
+// API 配置（从 config.js 导入）
+// 注意：由于是纯前端项目，直接使用全局 CONFIG 对象
 
-// 从 sessionStorage 获取 token（仅使用 sessionStorage，更安全）
+/**
+ * 从 sessionStorage 获取 token
+ * @returns {string} GitHub Token
+ */
 function getAuthToken() {
   return sessionStorage.getItem('github_token') || '';
 }
 
-// 保存 token（仅使用 sessionStorage，关闭标签页自动清除）
+/**
+ * 保存 token 到 sessionStorage
+ * @param {string} token - GitHub Token
+ */
 function saveAuthToken(token) {
   if (token) {
     sessionStorage.setItem('github_token', token);
-    // 不再保存到 localStorage，确保 Token 不会长期存储
   }
 }
 
-// 清除 token
+/**
+ * 清除 token
+ */
 function clearAuthToken() {
   sessionStorage.removeItem('github_token');
 }
 
-// 验证 token 是否有效
+/**
+ * 验证 token 是否有效
+ * @param {string} token - GitHub Token
+ * @returns {Promise<boolean>} 是否有效
+ */
 async function validateToken(token) {
   try {
     const res = await fetch(`${CONFIG.API_BASE}/user`, {
@@ -37,11 +46,15 @@ async function validateToken(token) {
     });
     return res.ok;
   } catch (e) {
+    console.warn('Token 验证失败:', e);
     return false;
   }
 }
 
-// 获取数据（优先从 Gist，回退到 localStorage）
+/**
+ * 获取数据（优先从 Gist，回退到 localStorage）
+ * @returns {Promise<Array>} 记录数组
+ */
 async function loadData() {
   const token = getAuthToken();
   
@@ -60,7 +73,7 @@ async function loadData() {
         if (data.files && data.files['history.json']) {
           const parsed = JSON.parse(data.files['history.json'].content);
           // 同步到 localStorage（仅数据，不含 Token）
-          localStorage.setItem('seawater_radiation_data', JSON.stringify(parsed.records || []));
+          setStorageItem(CONFIG.STORAGE_KEY, parsed.records || []);
           return parsed.records || [];
         }
       }
@@ -70,23 +83,32 @@ async function loadData() {
   }
   
   // 回退到 localStorage
-  const localData = localStorage.getItem('seawater_radiation_data');
-  return localData ? JSON.parse(localData) : [];
+  return getStorageItem(CONFIG.STORAGE_KEY, []);
 }
 
-// 保存数据（优先到 GitHub，回退到 localStorage）
+/**
+ * 保存数据（优先到 GitHub，回退到 localStorage）
+ * @param {Object} record - 新记录
+ * @returns {Promise<boolean>} 是否成功
+ */
 async function saveData(record) {
+  // 验证并清理数据
+  const validRecord = validateRecord(record);
+  if (!validRecord) {
+    throw new Error('数据验证失败');
+  }
+  
   const token = getAuthToken();
   
   // 获取现有数据
   let history = await loadData();
   
   // 添加新记录
-  history.unshift(record);
+  history.unshift(validRecord);
   
-  // 只保留最近100条
-  if (history.length > 100) {
-    history = history.slice(0, 100);
+  // 只保留最近 N 条
+  if (history.length > CONFIG.MAX_RECORDS) {
+    history = history.slice(0, CONFIG.MAX_RECORDS);
   }
   
   const newData = {
@@ -125,22 +147,73 @@ async function saveData(record) {
   }
   
   // 回退到 localStorage
-  localStorage.setItem('seawater_radiation_data', JSON.stringify(history));
+  setStorageItem(CONFIG.STORAGE_KEY, history);
   return true;
 }
 
-// 导出所有数据
+/**
+ * 清除所有数据
+ * @returns {Promise<boolean>} 是否成功
+ */
+async function clearAllData() {
+  const token = getAuthToken();
+  
+  // 清除 localStorage
+  removeStorageItem(CONFIG.STORAGE_KEY);
+  
+  // 尝试清除 GitHub Gist
+  if (token) {
+    try {
+      const res = await fetch(`https://api.github.com/gists/${CONFIG.GIST_ID}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `token ${token}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          description: '海水辐射值监测数据',
+          files: {
+            'history.json': {
+              content: JSON.stringify({ records: [], metadata: { updated: new Date().toISOString() } })
+            }
+          }
+        })
+      });
+      return res.ok;
+    } catch (e) {
+      console.warn('清除 GitHub 数据失败:', e);
+      return false;
+    }
+  }
+  
+  return true;
+}
+
+/**
+ * 导出所有数据为 JSON 字符串
+ * @returns {Promise<string>} JSON 字符串
+ */
 async function exportData() {
   const data = await loadData();
   return JSON.stringify(data, null, 2);
 }
 
-// 导入数据
+/**
+ * 导入数据
+ * @param {string} jsonData - JSON 字符串
+ * @returns {Promise<boolean>} 是否成功
+ */
 async function importData(jsonData) {
   try {
     const data = JSON.parse(jsonData);
     if (Array.isArray(data)) {
-      localStorage.setItem('seawater_radiation_data', JSON.stringify(data));
+      // 验证并清理数据
+      const validRecords = data
+        .map(item => validateRecord(item))
+        .filter(item => item !== null);
+      
+      setStorageItem(CONFIG.STORAGE_KEY, validRecords);
       
       // 尝试同步到 GitHub
       const token = getAuthToken();
@@ -154,7 +227,7 @@ async function importData(jsonData) {
         });
       }
       
-      return true;
+      return validRecords.length > 0;
     }
   } catch (e) {
     console.error('导入数据失败:', e);
@@ -162,7 +235,10 @@ async function importData(jsonData) {
   return false;
 }
 
-// 检查 GitHub 连接状态
+/**
+ * 检查 GitHub 连接状态
+ * @returns {Promise<Object>} 连接状态信息
+ */
 async function checkGitHubConnection() {
   const token = getAuthToken();
   if (!token) return { connected: false, message: '未登录' };
@@ -175,10 +251,11 @@ async function checkGitHubConnection() {
   }
 }
 
-// 简化的 API（供前端使用）
+// 导出 API 对象（供页面使用）
 const RadiationAPI = {
   loadData,
   saveData,
+  clearAllData,
   exportData,
   importData,
   validateToken,

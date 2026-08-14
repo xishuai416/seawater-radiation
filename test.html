@@ -232,22 +232,34 @@
         </div>
     </footer>
 
+    <!-- 引入模块 -->
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/api.js"></script>
+    
+    <!-- 测试页面专用逻辑 -->
     <script>
-        const STORAGE_KEY = 'seawater_radiation_data';
-        let trendChart = null;
-        let chartVisible = { uSv: true, cpm: true };
+        // 测试页面状态
+        const TestState = {
+            trendChart: null,
+            chartVisible: { uSv: true, cpm: true }
+        };
 
-        // 页面加载时显示现有数据
-        document.addEventListener('DOMContentLoaded', function() {
-            updateGitHubStatus();
-            loadHistoryData();
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', async function() {
+            await updateGitHubStatus();
+            await loadHistoryData();
         });
 
-        // 更新GitHub状态显示
+        /**
+         * 更新 GitHub 状态显示
+         */
         async function updateGitHubStatus() {
             const statusEl = document.getElementById('github-status');
             const iconEl = document.getElementById('status-icon');
             const textEl = document.getElementById('status-text');
+            
+            if (!statusEl || !iconEl || !textEl) return;
             
             const token = RadiationAPI.getAuthToken();
             
@@ -269,236 +281,216 @@
             }
         }
 
-        // 切换数据集可见性
-        function toggleDataset(type, visible) {
-            chartVisible[type] = visible;
-            
-            if (trendChart) {
-                const datasetIndex = type === 'uSv' ? 0 : 1;
-                const meta = trendChart.getDatasetMeta(datasetIndex);
-                meta.hidden = !visible;
-                trendChart.update();
-            }
-        }
-
-        // 生成测试数据
-        async function generateTestData(count) {
-            const history = await getHistory();
-            const baseTime = history.length > 0 
-                ? new Date(history[history.length - 1].time).getTime()
-                : Date.now() - count * 1800000; // 从当前时间往前推
-            
-            // 模拟辐射值变化趋势（轻微上升趋势）
-            let baseUsv = 0.12; // 初始μSv/h值（正常本底范围）
-            let baseCpm = 45;   // 初始CPM值
-            
-            const newRecords = [];
-            
-            for (let i = 0; i < count; i++) {
-                // 添加随机波动和轻微趋势
-                const trend = i * 0.0001; // 轻微上升趋势
-                const randomUsv = (Math.random() - 0.5) * 0.02; // ±0.01的随机波动
-                const randomCpm = (Math.random() - 0.5) * 5;   // ±2.5的随机波动
-                
-                const valueUsv = Math.max(0.05, baseUsv + trend + randomUsv);
-                const valueCpm = Math.max(20, baseCpm + trend * 200 + randomCpm);
-                
-                // 时间间隔：每30分钟一条数据
-                const time = new Date(baseTime + i * 1800000).toISOString();
-                
-                newRecords.push({
-                    id: Date.now() + i,
-                    time,
-                    valueUsv: parseFloat(valueUsv.toFixed(3)),
-                    valueCpm: parseFloat(valueCpm.toFixed(2))
-                });
-            }
-            
-            // 合并数据
-            const allRecords = [...history, ...newRecords];
-            
-            // 保存到本地
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(allRecords));
-            
-            // 尝试同步到GitHub
+        /**
+         * 加载历史数据
+         */
+        async function loadHistoryData() {
             try {
-                await RadiationAPI.saveData({
-                    id: Date.now(),
-                    time: new Date().toISOString(),
-                    valueUsv: null,
-                    valueCpm: null,
-                    sync: true
-                });
-            } catch (e) {
-                console.warn('GitHub同步失败:', e);
+                const history = await RadiationAPI.loadData();
+                
+                if (history.length > 0) {
+                    updateDisplay(history[0], history);
+                    updateChart(history);
+                    const totalCountEl = document.getElementById('total-count');
+                    if (totalCountEl) totalCountEl.textContent = history.length;
+                }
+            } catch (error) {
+                console.error('加载数据失败:', error);
             }
-            
-            // 显示结果
-            const resultEl = document.getElementById('test-result');
-            resultEl.className = 'success';
-            resultEl.innerHTML = `✅ 成功生成 ${count} 条测试数据！<br>` +
-                `当前总数据量: ${allRecords.length} 条<br>` +
-                `时间范围: ${new Date(allRecords[allRecords.length-1].time).toLocaleString()} - ${new Date(allRecords[0].time).toLocaleString()}`;
-            
-            // 重新加载数据
-            loadHistoryData();
         }
 
-        // 清除所有数据
-        async function clearAllData() {
-            if (confirm('确定要清除所有数据吗？此操作不可恢复。')) {
-                localStorage.removeItem(STORAGE_KEY);
+        /**
+         * 切换数据集可见性
+         */
+        function toggleDataset(type, visible) {
+            TestState.chartVisible[type] = visible;
+            
+            if (TestState.trendChart) {
+                const datasetIndex = type === 'uSv' ? 0 : 1;
+                const meta = TestState.trendChart.getDatasetMeta(datasetIndex);
+                meta.hidden = !visible;
+                TestState.trendChart.update();
+            }
+        }
+
+        /**
+         * 生成测试数据
+         */
+        async function generateTestData(count) {
+            try {
+                const history = await RadiationAPI.loadData();
+                const newRecords = generateTestData_fromUtils(count);
                 
-                // 尝试从GitHub也清除
+                // 合并数据
+                const allRecords = [...history, ...newRecords];
+                
+                // 保存到 localStorage
+                setStorageItem(CONFIG.STORAGE_KEY, allRecords);
+                
+                // 尝试同步到 GitHub
                 try {
                     await RadiationAPI.saveData({
                         id: Date.now(),
                         time: new Date().toISOString(),
                         valueUsv: null,
                         valueCpm: null,
-                        clear: true
+                        sync: true
                     });
+                } catch (e) {
+                    console.warn('GitHub同步失败:', e);
+                }
+                
+                // 显示结果
+                const resultEl = document.getElementById('test-result');
+                if (resultEl) {
+                    resultEl.className = 'success';
+                    resultEl.innerHTML = `✅ 成功生成 ${count} 条测试数据！<br>` +
+                        `当前总数据量: ${allRecords.length} 条<br>` +
+                        `时间范围: ${new Date(allRecords[allRecords.length-1].time).toLocaleString()} - ${new Date(allRecords[0].time).toLocaleString()}`;
+                }
+                
+                // 重新加载
+                await loadHistoryData();
+                showNotification(`成功生成 ${count} 条测试数据`, 'success');
+            } catch (error) {
+                console.error('生成测试数据失败:', error);
+                showNotification('生成测试数据失败', 'error');
+            }
+        }
+
+        /**
+         * 清除所有数据
+         */
+        async function clearAllData() {
+            if (!confirm('确定要清除所有数据吗？此操作不可恢复。')) {
+                return;
+            }
+            
+            try {
+                // 清除 localStorage
+                removeStorageItem(CONFIG.STORAGE_KEY);
+                
+                // 尝试清除 GitHub
+                try {
+                    await RadiationAPI.clearAllData();
                 } catch (e) {
                     console.warn('GitHub清除失败:', e);
                 }
                 
-                currentRecord = null;
-                
                 // 清空显示
-                document.getElementById('current-uSv').textContent = '--';
-                document.getElementById('current-cpm').textContent = '--';
-                document.getElementById('initial-uSv').textContent = '--';
-                document.getElementById('initial-cpm').textContent = '--';
-                document.getElementById('yoy-uSv').textContent = '--';
-                document.getElementById('yoy-cpm').textContent = '--';
-                document.getElementById('mom-uSv').textContent = '--';
-                document.getElementById('mom-cpm').textContent = '--';
-                document.getElementById('trend-direction').textContent = '--';
-                document.getElementById('trend-desc').textContent = '暂无数据';
-                document.getElementById('total-count').textContent = '0';
+                const ids = [
+                    'current-uSv', 'current-cpm', 'initial-uSv', 'initial-cpm',
+                    'yoy-uSv', 'yoy-cpm', 'mom-uSv', 'mom-cpm',
+                    'trend-direction', 'trend-desc', 'total-count',
+                    'last-update', 'last-update-time'
+                ];
+                
+                ids.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        el.textContent = id === 'total-count' ? '0' : '--';
+                    }
+                });
                 
                 // 清空图表
-                if (trendChart) {
-                    trendChart.destroy();
-                    trendChart = null;
+                if (TestState.trendChart) {
+                    TestState.trendChart.destroy();
+                    TestState.trendChart = null;
                 }
                 
-                alert('✅ 数据已清除');
+                showNotification('数据已清除', 'success');
+            } catch (error) {
+                console.error('清除数据失败:', error);
+                showNotification('清除数据失败', 'error');
             }
         }
 
-        // 获取历史记录
-        async function getHistory() {
-            return await RadiationAPI.loadData();
-        }
-
-        // 加载历史数据
-        async function loadHistoryData() {
-            const history = await getHistory();
-            if (history.length > 0) {
-                currentRecord = history[0];
-                updateDisplay(currentRecord, history);
-                updateChart(history);
-                document.getElementById('total-count').textContent = history.length;
-            }
-        }
-
-        // 更新显示
+        /**
+         * 更新显示
+         */
         async function updateDisplay(record, history) {
+            if (!record || !history || history.length === 0) return;
+            
             const firstRecord = history[history.length - 1];
             
             // 当前值
-            document.getElementById('current-uSv').textContent = record.valueUsv !== null ? record.valueUsv.toFixed(3) : '--';
-            document.getElementById('current-cpm').textContent = record.valueCpm !== null ? record.valueCpm.toFixed(2) : '--';
+            const currentUsvEl = document.getElementById('current-uSv');
+            const currentCpmEl = document.getElementById('current-cpm');
+            if (currentUsvEl) currentUsvEl.textContent = record.valueUsv !== null ? record.valueUsv.toFixed(3) : '--';
+            if (currentCpmEl) currentCpmEl.textContent = record.valueCpm !== null ? record.valueCpm.toFixed(2) : '--';
             
-            // 初始值（首条记录的值）
+            // 初始值
             if (firstRecord) {
-                document.getElementById('initial-uSv').textContent = firstRecord.valueUsv !== null ? firstRecord.valueUsv.toFixed(3) : '--';
-                document.getElementById('initial-cpm').textContent = firstRecord.valueCpm !== null ? firstRecord.valueCpm.toFixed(2) : '--';
-            } else {
-                document.getElementById('initial-uSv').textContent = '--';
-                document.getElementById('initial-cpm').textContent = '--';
+                const initialUsvEl = document.getElementById('initial-uSv');
+                const initialCpmEl = document.getElementById('initial-cpm');
+                if (initialUsvEl) initialUsvEl.textContent = firstRecord.valueUsv !== null ? firstRecord.valueUsv.toFixed(3) : '--';
+                if (initialCpmEl) initialCpmEl.textContent = firstRecord.valueCpm !== null ? firstRecord.valueCpm.toFixed(2) : '--';
             }
             
             // 同比增长 (μSv)
             if (record.valueUsv !== null && firstRecord && firstRecord.valueUsv !== null && firstRecord.valueUsv > 0) {
                 const yoyUsv = ((record.valueUsv - firstRecord.valueUsv) / firstRecord.valueUsv * 100).toFixed(2);
-                document.getElementById('yoy-uSv').textContent = `${yoyUsv > 0 ? '+' : ''}${yoyUsv}%`;
-                updateTrendClass('yoy-uSv-trend', yoyUsv);
-            } else {
-                document.getElementById('yoy-uSv').textContent = '--';
-                document.getElementById('yoy-uSv-trend').textContent = '';
-                document.getElementById('yoy-uSv-trend').className = 'trend';
+                const yoyUsvEl = document.getElementById('yoy-uSv');
+                const yoyUsvTrendEl = document.getElementById('yoy-uSv-trend');
+                if (yoyUsvEl) yoyUsvEl.textContent = `${yoyUsv > 0 ? '+' : ''}${yoyUsv}%`;
+                if (yoyUsvTrendEl) updateTrendClass(yoyUsvTrendEl, yoyUsv);
             }
             
             // 同比增长 (CPM)
             if (record.valueCpm !== null && firstRecord && firstRecord.valueCpm !== null && firstRecord.valueCpm > 0) {
                 const yoyCpm = ((record.valueCpm - firstRecord.valueCpm) / firstRecord.valueCpm * 100).toFixed(2);
-                document.getElementById('yoy-cpm').textContent = `${yoyCpm > 0 ? '+' : ''}${yoyCpm}%`;
-                updateTrendClass('yoy-cpm-trend', yoyCpm);
-            } else {
-                document.getElementById('yoy-cpm').textContent = '--';
-                document.getElementById('yoy-cpm-trend').textContent = '';
-                document.getElementById('yoy-cpm-trend').className = 'trend';
+                const yoyCpmEl = document.getElementById('yoy-cpm');
+                const yoyCpmTrendEl = document.getElementById('yoy-cpm-trend');
+                if (yoyCpmEl) yoyCpmEl.textContent = `${yoyCpm > 0 ? '+' : ''}${yoyCpm}%`;
+                if (yoyCpmTrendEl) updateTrendClass(yoyCpmTrendEl, yoyCpm);
             }
             
             // 环比增长 (μSv)
             const prevRecord = history.find(r => r.id !== record.id);
             if (record.valueUsv !== null && prevRecord && prevRecord.valueUsv !== null) {
                 const momUsv = ((record.valueUsv - prevRecord.valueUsv) / prevRecord.valueUsv * 100).toFixed(2);
-                document.getElementById('mom-uSv').textContent = `${momUsv > 0 ? '+' : ''}${momUsv}%`;
-                updateTrendClass('mom-uSv-trend', momUsv);
-            } else {
-                document.getElementById('mom-uSv').textContent = '--';
-                document.getElementById('mom-uSv-trend').textContent = '';
-                document.getElementById('mom-uSv-trend').className = 'trend';
+                const momUsvEl = document.getElementById('mom-uSv');
+                const momUsvTrendEl = document.getElementById('mom-uSv-trend');
+                if (momUsvEl) momUsvEl.textContent = `${momUsv > 0 ? '+' : ''}${momUsv}%`;
+                if (momUsvTrendEl) updateTrendClass(momUsvTrendEl, momUsv);
             }
             
             // 环比增长 (CPM)
             if (record.valueCpm !== null && prevRecord && prevRecord.valueCpm !== null) {
                 const momCpm = ((record.valueCpm - prevRecord.valueCpm) / prevRecord.valueCpm * 100).toFixed(2);
-                document.getElementById('mom-cpm').textContent = `${momCpm > 0 ? '+' : ''}${momCpm}%`;
-                updateTrendClass('mom-cpm-trend', momCpm);
-            } else {
-                document.getElementById('mom-cpm').textContent = '--';
-                document.getElementById('mom-cpm-trend').textContent = '';
-                document.getElementById('mom-cpm-trend').className = 'trend';
+                const momCpmEl = document.getElementById('mom-cpm');
+                const momCpmTrendEl = document.getElementById('mom-cpm-trend');
+                if (momCpmEl) momCpmEl.textContent = `${momCpm > 0 ? '+' : ''}${momCpm}%`;
+                if (momCpmTrendEl) updateTrendClass(momCpmTrendEl, momCpm);
             }
             
-            // 变化趋势
+            // 趋势描述
             updateTrendDescription(record, history);
             
             // 最后更新时间
             if (record.time) {
                 const date = new Date(record.time);
-                document.getElementById('last-update').textContent = date.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' });
-                document.getElementById('last-update-time').textContent = date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+                const lastUpdateEl = document.getElementById('last-update');
+                const lastUpdateTimeEl = document.getElementById('last-update-time');
+                if (lastUpdateEl) lastUpdateEl.textContent = date.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' });
+                if (lastUpdateTimeEl) lastUpdateTimeEl.textContent = date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
             }
         }
 
-        // 更新趋势样式类
-        function updateTrendClass(elementId, changeValue) {
-            const el = document.getElementById(elementId);
-            const numValue = parseFloat(changeValue);
-            if (numValue > 0) {
-                el.textContent = '↑ 上升';
-                el.className = 'trend up';
-            } else if (numValue < 0) {
-                el.textContent = '↓ 下降';
-                el.className = 'trend down';
-            } else {
-                el.textContent = '— 持平';
-                el.className = 'trend stable';
-            }
-        }
-
-        // 更新趋势描述
+        /**
+         * 更新趋势描述
+         */
         function updateTrendDescription(record, history) {
-            const recentRecords = history.slice(0, 5);
+            const recentRecords = history.slice(0, CONFIG.TREND_HISTORY_COUNT);
+            
+            const trendDirectionEl = document.getElementById('trend-direction');
+            const trendDescEl = document.getElementById('trend-desc');
+            
+            if (!trendDirectionEl || !trendDescEl) return;
             
             if (recentRecords.length < 2) {
-                document.getElementById('trend-direction').textContent = '--';
-                document.getElementById('trend-desc').textContent = '数据不足，无法判断趋势';
+                trendDirectionEl.textContent = '--';
+                trendDescEl.textContent = '数据不足，无法判断趋势';
                 return;
             }
             
@@ -521,61 +513,54 @@
             }
             
             if (count === 0) {
-                document.getElementById('trend-direction').textContent = '--';
-                document.getElementById('trend-desc').textContent = '无有效数据';
+                trendDirectionEl.textContent = '--';
+                trendDescEl.textContent = '无有效数据';
                 return;
             }
             
             const avgChange = totalChange / count;
             
-            const trendEl = document.getElementById('trend-direction');
-            const descEl = document.getElementById('trend-desc');
-            
-            if (avgChange > 5) {
-                trendEl.textContent = '📈 明显上升';
-                trendEl.style.color = '#4caf50';
-                descEl.textContent = '近5次监测呈持续上升趋势';
-            } else if (avgChange < -5) {
-                trendEl.textContent = '📉 明显下降';
-                trendEl.style.color = '#f44336';
-                descEl.textContent = '近5次监测呈持续下降趋势';
-            } else if (Math.abs(avgChange) <= 5) {
-                trendEl.textContent = '➡️ 基本稳定';
-                trendEl.style.color = '#ff9800';
-                descEl.textContent = '近5次监测波动在±5%以内';
+            if (avgChange > CONFIG.TREND_THRESHOLD) {
+                trendDirectionEl.textContent = '📈 明显上升';
+                trendDirectionEl.style.color = CONFIG.COLORS.success;
+                trendDescEl.textContent = '近5次监测呈持续上升趋势';
+            } else if (avgChange < -CONFIG.TREND_THRESHOLD) {
+                trendDirectionEl.textContent = '📉 明显下降';
+                trendDirectionEl.style.color = CONFIG.COLORS.danger;
+                trendDescEl.textContent = '近5次监测呈持续下降趋势';
+            } else if (Math.abs(avgChange) <= CONFIG.TREND_THRESHOLD) {
+                trendDirectionEl.textContent = '➡️ 基本稳定';
+                trendDirectionEl.style.color = CONFIG.COLORS.warning;
+                trendDescEl.textContent = '近5次监测波动在±5%以内';
             }
         }
 
-        // 更新图表
+        /**
+         * 更新图表
+         */
         async function updateChart(history) {
-            const ctx = document.getElementById('trend-chart').getContext('2d');
+            const chartElement = document.getElementById('trend-chart');
+            if (!chartElement) return;
+            
+            const ctx = chartElement.getContext('2d');
             
             if (!history || history.length === 0) return;
             
-            // 如果数据太多，采样显示（最多显示100个点）
-            let displayData = history;
-            if (history.length > 100) {
-                const step = Math.floor(history.length / 100);
-                displayData = history.filter((_, index) => index % step === 0);
-            }
+            const displayData = sampleData(history, CONFIG.CHART_MAX_POINTS);
             
-            // 准备数据
             const labels = displayData.map(r => {
                 const date = new Date(r.time);
                 return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
             });
             
-            // 准备μSv和CPM数据
             const usvData = displayData.map(r => r.valueUsv || 0);
             const cpmData = displayData.map(r => r.valueCpm || 0);
             
-            // 销毁旧图表
-            if (trendChart) {
-                trendChart.destroy();
+            if (TestState.trendChart) {
+                TestState.trendChart.destroy();
             }
             
-            // 创建新图表（双数据集）
-            trendChart = new Chart(ctx, {
+            TestState.trendChart = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: labels,
@@ -583,11 +568,11 @@
                         {
                             label: '辐射值 (μSv/h)',
                             data: usvData,
-                            borderColor: '#4fc3f7',
-                            backgroundColor: '#4fc3f733',
+                            borderColor: CONFIG.COLORS.primary,
+                            backgroundColor: `${CONFIG.COLORS.primary}33`,
                             borderWidth: 2,
                             fill: true,
-                            tension: 0.3,
+                            tension: CONFIG.CHART_TENSION,
                             pointRadius: 0,
                             pointHoverRadius: 5,
                             yAxisID: 'y'
@@ -595,11 +580,11 @@
                         {
                             label: '辐射值 (CPM)',
                             data: cpmData,
-                            borderColor: '#ff9800',
-                            backgroundColor: '#ff980033',
+                            borderColor: CONFIG.COLORS.warning,
+                            backgroundColor: `${CONFIG.COLORS.warning}33`,
                             borderWidth: 2,
                             fill: true,
-                            tension: 0.3,
+                            tension: CONFIG.CHART_TENSION,
                             pointRadius: 0,
                             pointHoverRadius: 5,
                             yAxisID: 'y1'
@@ -615,28 +600,22 @@
                     plugins: {
                         legend: {
                             labels: {
-                                color: '#fff',
+                                color: CONFIG.COLORS.text,
                                 font: { size: 12 }
                             }
                         },
                         tooltip: {
                             backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                            titleColor: '#4fc3f7',
-                            bodyColor: '#fff',
+                            titleColor: CONFIG.COLORS.primary,
+                            bodyColor: CONFIG.COLORS.text,
                             padding: 12,
                             callbacks: {
                                 label: function(context) {
                                     let label = context.dataset.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
+                                    if (label) label += ': ';
                                     if (context.parsed.y !== null) {
                                         label += context.parsed.y.toFixed(2);
-                                        if (context.datasetIndex === 0) {
-                                            label += ' μSv/h';
-                                        } else {
-                                            label += ' CPM';
-                                        }
+                                        label += context.datasetIndex === 0 ? ' μSv/h' : ' CPM';
                                     }
                                     return label;
                                 }
@@ -647,7 +626,7 @@
                         x: {
                             grid: { color: 'rgba(255, 255, 255, 0.1)' },
                             ticks: { 
-                                color: '#90a4ae',
+                                color: CONFIG.COLORS.textMuted,
                                 maxTicksLimit: 10,
                                 maxRotation: 45,
                                 font: { size: 10 }
@@ -658,30 +637,16 @@
                             display: true,
                             position: 'left',
                             grid: { color: 'rgba(79, 195, 247, 0.1)' },
-                            ticks: { 
-                                color: '#4fc3f7',
-                                font: { size: 10 }
-                            },
-                            title: {
-                                display: true,
-                                text: 'μSv/h',
-                                color: '#4fc3f7'
-                            }
+                            ticks: { color: CONFIG.COLORS.primary, font: { size: 10 } },
+                            title: { display: true, text: 'μSv/h', color: CONFIG.COLORS.primary }
                         },
                         y1: {
                             type: 'linear',
                             display: true,
                             position: 'right',
                             grid: { drawOnChartArea: false },
-                            ticks: { 
-                                color: '#ff9800',
-                                font: { size: 10 }
-                            },
-                            title: {
-                                display: true,
-                                text: 'CPM',
-                                color: '#ff9800'
-                            }
+                            ticks: { color: CONFIG.COLORS.warning, font: { size: 10 } },
+                            title: { display: true, text: 'CPM', color: CONFIG.COLORS.warning }
                         }
                     }
                 }

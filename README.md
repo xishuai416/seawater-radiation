@@ -2,6 +2,19 @@
 
 海水辐射值监测网页，支持双单位（μSv/h 和 CPM）数据录入与展示。数据存储在 GitHub Gist 中实现持久化。
 
+## 架构优化（v2.0）
+
+本次重构采用模块化架构，将代码拆分为多个职责清晰的模块：
+
+```
+js/
+├── config.js    # 全局配置（常量、颜色、阈值等）
+├── utils.js     # 工具函数库（存储、格式、通知等）
+├── api.js       # GitHub API 层（数据同步、Token 管理）
+├── app.js       # 主页控制器（数据展示、图表渲染）
+└── admin.js     # 管理页控制器（登录、数据录入）
+```
+
 ## 功能特性
 
 - 📊 **当前值显示**：实时显示最新测量的辐射值
@@ -49,6 +62,11 @@
 3. 填写测量时间和辐射值
 4. 提交数据后自动同步到GitHub
 
+### 测试数据
+- 访问 `test.html` 可生成模拟数据
+- 支持生成100/500/1000条测试记录
+- 可清除所有数据
+
 ## 默认登录信息
 
 - 用户名：`admin`
@@ -89,7 +107,7 @@ sessionStorage.setItem('github_token', token);
    - 复制生成的Token
 
 3. **修改配置文件**
-   编辑 `js/api.js`：
+   编辑 `js/config.js`：
    ```javascript
    const CONFIG = {
      GIST_ID: '你的Gist-ID',
@@ -110,8 +128,10 @@ seawater-radiation/
 ├── admin.html          # 录入页面（需登录）
 ├── test.html           # 测试数据生成
 ├── css/
-│   └── style.css       # 样式文件
+│   └── style.css       # 样式文件（含通知样式）
 ├── js/
+│   ├── config.js       # 全局配置
+│   ├── utils.js        # 工具函数库
 │   ├── api.js          # GitHub API层
 │   ├── app.js          # 主页逻辑
 │   └── admin.js        # 录入页逻辑
@@ -161,3 +181,43 @@ seawater-radiation/
    - 本地 localStorage 作为备份
    - 定期导出数据备份
    - 监控数据完整性
+
+## 模块依赖关系
+
+```
+index.html
+├── config.js      (基础配置)
+├── utils.js       (工具函数，依赖 config)
+├── api.js         (API层，依赖 config, utils)
+└── app.js         (主页逻辑，依赖 api, utils)
+
+admin.html
+├── config.js
+├── utils.js
+├── api.js
+└── admin.js       (管理逻辑，依赖 api, utils)
+
+test.html
+├── config.js
+├── utils.js
+├── api.js
+└── test.js        (测试逻辑，内联)
+```
+
+## 变更日志
+
+### v2.0 (2026-08-14)
+- ✨ 新增模块化架构
+- ✨ 提取配置到 config.js
+- ✨ 提取工具函数到 utils.js
+- ✨ 重构 API 层为独立模块
+- ✨ 增加数据校验和错误处理
+- ✨ 添加通知系统
+- 🐛 修复 admin.html 管理入口链接
+- 🐛 修复 style.css 被截断问题
+- 🐛 清理重复代码
+
+### v1.0 (初始版本)
+- 基础数据展示功能
+- GitHub Gist 云存储
+- 密码保护录入页面
