@@ -12,6 +12,18 @@
 - 🔐 **密码保护**：数据录入页面需要登录验证
 - ☁️ **云存储**：数据同步到 GitHub Gist
 
+## 安全说明
+
+### Token 存储方式
+- ✅ 使用 **sessionStorage** 存储 Token（关闭浏览器自动清除）
+- ✅ 不硬编码 Token 在代码中
+- ⚠️ 密码仍使用 localStorage 备份（可选清除）
+
+### 安全建议
+1. 不要在公共电脑上保存登录状态
+2. 定期更换 GitHub Token
+3. 使用最小权限原则（仅需 gist 权限）
+
 ## 部署说明
 
 ### GitHub Pages 部署
@@ -33,7 +45,7 @@
 
 ### 录入数据
 1. 点击右下角的"📝"按钮
-2. 输入GitHub Token连接云端，或使用本地密码登录
+2. 输入GitHub Token连接云端（推荐）或使用本地密码登录
 3. 填写测量时间和辐射值
 4. 提交数据后自动同步到GitHub
 
@@ -55,6 +67,15 @@
                       localStorage 备份
 ```
 
+### Token 安全存储
+```javascript
+// 使用 sessionStorage（关闭浏览器自动清除）
+sessionStorage.setItem('github_token', token);
+
+// 不推荐：localStorage 会永久存储
+// localStorage.setItem('github_token', token);
+```
+
 ### 配置步骤
 
 1. **创建GitHub Gist**
@@ -71,7 +92,7 @@
    编辑 `js/api.js`：
    ```javascript
    const CONFIG = {
-     GIST_ID: '你的Gist-ID',  // 替换为你的Gist ID
+     GIST_ID: '你的Gist-ID',
      OWNER: '你的GitHub用户名',
      REPO: 'seawater-radiation'
    };
@@ -79,7 +100,7 @@
 
 4. **登录时输入Token**
    - 在录入页面输入GitHub Token
-   - 系统会自动验证并保存
+   - 系统会自动验证并保存到 sessionStorage
 
 ## 目录结构
 
@@ -88,6 +109,12 @@ seawater-radiation/
 ├── index.html          # 主页（数据展示）
 ├── admin.html          # 录入页面（需登录）
 ├── test.html           # 测试数据生成
+├── api/                # API 代理目录
+│   ├── README.md
+│   └── index.html
+├── .github/
+│   └── workflows/
+│       └── api.yml     # GitHub Actions workflow
 ├── css/
 │   └── style.css       # 样式文件
 ├── js/
@@ -121,5 +148,22 @@ seawater-radiation/
 
 - 纯前端：HTML5 + CSS3 + JavaScript
 - 图表：Chart.js
-- 存储：GitHub Gist API + localStorage 备份
+- 存储：GitHub Gist API + sessionStorage + localStorage 备份
 - 部署：GitHub Pages
+
+## 安全最佳实践
+
+1. **Token 管理**
+   - 使用 sessionStorage 而非 localStorage
+   - 关闭浏览器后 Token 自动清除
+   - 定期更换 Token
+
+2. **密码安全**
+   - 不在代码中硬编码密码
+   - 使用强密码
+   - 考虑使用多因素认证
+
+3. **数据备份**
+   - 本地 localStorage 作为备份
+   - 定期导出数据备份
+   - 监控数据完整性

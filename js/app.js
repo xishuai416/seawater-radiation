@@ -1,4 +1,4 @@
-// 数据存储（使用 localStorage 作为备份，优先使用 GitHub API）
+// 数据存储（使用 localStorage 作为备份，优先使用 GitHub Gist）
 const STORAGE_KEY = 'seawater_radiation_data';
 let trendChart = null;
 let currentRecord = null;
@@ -11,17 +11,24 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // 更新GitHub状态显示
-function updateGitHubStatus() {
+async function updateGitHubStatus() {
     const statusEl = document.getElementById('github-status');
     const iconEl = document.getElementById('status-icon');
     const textEl = document.getElementById('status-text');
     
-    const token = getAuthToken();
+    const token = RadiationAPI.getAuthToken();
     
-    if (token && token !== 'your-github-token-here') {
-        statusEl.className = 'github-status connected';
-        iconEl.textContent = '🟢';
-        textEl.textContent = '已连接GitHub';
+    if (token) {
+        const connected = await RadiationAPI.validateToken(token);
+        if (connected) {
+            statusEl.className = 'github-status connected';
+            iconEl.textContent = '🟢';
+            textEl.textContent = '已连接GitHub';
+        } else {
+            statusEl.className = 'github-status disconnected';
+            iconEl.textContent = '🟡';
+            textEl.textContent = 'Token失效';
+        }
     } else {
         statusEl.className = 'github-status disconnected';
         iconEl.textContent = '⚪';
@@ -31,21 +38,7 @@ function updateGitHubStatus() {
 
 // 获取历史记录
 async function getHistory() {
-    // 先尝试从GitHub获取
-    try {
-        const data = await loadData();
-        if (data && data.length > 0) {
-            // 同步到localStorage作为备份
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-            return data;
-        }
-    } catch (e) {
-        console.warn('从GitHub获取失败，使用本地备份:', e);
-    }
-    
-    // 回退到localStorage
-    const localData = localStorage.getItem(STORAGE_KEY);
-    return localData ? JSON.parse(localData) : [];
+    return await RadiationAPI.loadData();
 }
 
 // 加载历史数据

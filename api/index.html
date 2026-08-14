@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API 测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>🌊 海水辐射值监测 - API 测试</h1>
+    
+    <h2>API 状态</h2>
+    <p>当前 API 代理通过 GitHub Actions 实现。</p>
+    
+    <h2>测试 API</h2>
+    <button onclick="testAPI()">测试 API</button>
+    <pre id="result">点击按钮测试...</pre>
+    
+    <h2>配置说明</h2>
+    <pre>
+1. 在 GitHub 仓库设置中添加 Secrets:
+   - GIST_TOKEN: 你的 GitHub Personal Access Token (需要 gist 权限)
+   - GIST_ID: ada469ec18bdbbebf32b356ee3e4564e
+
+2. 前端代码已配置为通过 API 代理访问数据
+
+3. 首次使用需要手动触发一次 workflow:
+   - 进入仓库 Actions 页面
+   - 点击 "Radiation Data API" workflow
+   - 点击 "Run workflow" 按钮
+    </pre>
+    
+    <script>
+        async function testAPI() {
+            const resultEl = document.getElementById('result');
+            resultEl.textContent = '测试中...';
+            
+            try {
+                // 这里应该调用实际的 API 端点
+                // 由于 GitHub Pages 的限制，我们使用直接调用 Gist API 的方式
+                const response = await fetch('https://api.github.com/gists/ada469ec18bdbbebf32b356ee3e4564e');
+                const data = await response.json();
+                
+                if (data.files && data.files['history.json']) {
+                    const records = JSON.parse(data.files['history.json'].content).records || [];
+                    resultEl.textContent = `✅ API 正常\n\n当前数据量: ${records.length} 条\n最后更新: ${data.updated_at}`;
+                } else {
+                    resultEl.textContent = '⚠️ Gist 文件不存在';
+                }
+            } catch (e) {
+                resultEl.textContent = `❌ API 错误: ${e.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -16,9 +16,9 @@ document.addEventListener('DOMContentLoaded', function() {
         showLoginPanel();
     }
     
-    // 检查已有的GitHub Token
+    // 检查已有的GitHub Token（优先使用 sessionStorage）
     const savedToken = getAuthToken();
-    if (savedToken && savedToken !== 'your-github-token-here') {
+    if (savedToken) {
         document.getElementById('github-token').value = savedToken;
         validateAndShowTokenStatus(savedToken);
     }
@@ -52,9 +52,10 @@ async function connectGitHub() {
     const isValid = await validateToken(token);
     
     if (isValid) {
+        // 保存到 sessionStorage（更安全）
         saveAuthToken(token);
         statusEl.className = 'token-status connected';
-        statusTextEl.textContent = '已连接';
+        statusTextEl.textContent = '已连接（session）';
         showEntryPanel();
     } else {
         statusEl.className = 'token-status disconnected';
@@ -63,7 +64,7 @@ async function connectGitHub() {
     }
 }
 
-// 验证Token
+// 验证Token并显示状态
 async function validateAndShowTokenStatus(token) {
     const statusEl = document.getElementById('token-status');
     const statusTextEl = document.getElementById('token-status-text');
@@ -72,7 +73,7 @@ async function validateAndShowTokenStatus(token) {
     
     if (isValid) {
         statusEl.className = 'token-status connected';
-        statusTextEl.textContent = '已连接';
+        statusTextEl.textContent = '已连接（session）';
     } else {
         statusEl.className = 'token-status disconnected';
         statusTextEl.textContent = '连接失效';
@@ -221,7 +222,7 @@ async function submitData() {
     msgEl.style.display = 'block';
     
     try {
-        await saveData(record);
+        await RadiationAPI.saveData(record);
         msgEl.textContent = '✅ 数据已同步到GitHub';
         msgEl.style.color = '#4caf50';
     } catch (e) {
