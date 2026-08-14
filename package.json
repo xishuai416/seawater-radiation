@@ -1,0 +1,26 @@
+{
+  "name": "seawater-radiation-monitor",
+  "version": "1.0.0",
+  "description": "海水辐射值监测网页 - Seawater Radiation Monitor",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/USERNAME/seawater-radiation.git"
+  },
+  "keywords": [
+    "ocean",
+    "radiation",
+    "PAR",
+    "monitoring",
+    "seawater"
+  ],
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/USERNAME/seawater-radiation/issues"
+  },
+  "homepage": "https://USERNAME.github.io/seawater-radiation"
+}

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>海水辐射值监测</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .chart-section {
+            position: relative;
+        }
+        .chart-toggle {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 10;
+            display: flex;
+            gap: 10px;
+        }
+        .chart-toggle label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            color: #fff;
+            font-size: 14px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+        .chart-toggle input[type="checkbox"] {
+            cursor: pointer;
+        }
+        .chart-toggle .checkbox-uSv {
+            accent-color: #4fc3f7;
+        }
+        .chart-toggle .checkbox-cpm {
+            accent-color: #ff9800;
+        }
+        .github-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 12px;
+            z-index: 100;
+        }
+        .github-status.connected {
+            border: 1px solid #4caf50;
+        }
+        .github-status.disconnected {
+            border: 1px solid #f44336;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>🌊 海水辐射值监测平台</h1>
+            <p>Seawater Radiation Monitoring</p>
+        </div>
+    </header>
+
+    <!-- GitHub状态指示 -->
+    <div class="github-status disconnected" id="github-status">
+        <span id="status-icon">⚪</span>
+        <span id="status-text">未连接</span>
+    </div>
+
+    <main class="container">
+        <!-- 数据展示 -->
+        <section class="data-display">
+            <h2>📊 监测数据</h2>
+            <div class="stats-grid">
+                <div class="stat-card highlight">
+                    <h3>当前值 (μSv/h)</h3>
+                    <div class="value" id="current-uSv">--</div>
+                </div>
+                <div class="stat-card highlight">
+                    <h3>当前值 (CPM)</h3>
+                    <div class="value" id="current-cpm">--</div>
+                </div>
+                <div class="stat-card">
+                    <h3>初始值 (μSv/h)</h3>
+                    <div class="value" id="initial-uSv">--</div>
+                </div>
+                <div class="stat-card">
+                    <h3>初始值 (CPM)</h3>
+                    <div class="value" id="initial-cpm">--</div>
+                </div>
+                <div class="stat-card">
+                    <h3>同比增长 (μSv)</h3>
+                    <div class="value" id="yoy-uSv">--</div>
+                    <div class="trend" id="yoy-uSv-trend"></div>
+                </div>
+                <div class="stat-card">
+                    <h3>同比增长 (CPM)</h3>
+                    <div class="value" id="yoy-cpm">--</div>
+                    <div class="trend" id="yoy-cpm-trend"></div>
+                </div>
+                <div class="stat-card">
+                    <h3>环比增长 (μSv)</h3>
+                    <div class="value" id="mom-uSv">--</div>
+                    <div class="trend" id="mom-uSv-trend"></div>
+                </div>
+                <div class="stat-card">
+                    <h3>环比增长 (CPM)</h3>
+                    <div class="value" id="mom-cpm">--</div>
+                    <div class="trend" id="mom-cpm-trend"></div>
+                </div>
+                <div class="stat-card">
+                    <h3>变化趋势</h3>
+                    <div class="value" id="trend-direction">--</div>
+                    <div class="trend-desc" id="trend-desc">--</div>
+                </div>
+                <div class="stat-card">
+                    <h3>数据总量</h3>
+                    <div class="value" id="total-count">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>最后更新</h3>
+                    <div class="value" id="last-update" style="font-size:1rem;">--</div>
+                    <div class="unit" id="last-update-time">--</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 图表展示 -->
+        <section class="chart-section">
+            <h2>📈 变化趋势</h2>
+            <div class="chart-toggle">
+                <label>
+                    <input type="checkbox" id="toggle-usv" class="checkbox-uSv" checked onchange="toggleDataset('uSv', this.checked)">
+                    μSv/h
+                </label>
+                <label>
+                    <input type="checkbox" id="toggle-cpm" class="checkbox-cpm" checked onchange="toggleDataset('cpm', this.checked)">
+                    CPM
+                </label>
+            </div>
+            <canvas id="trend-chart" width="800" height="300"></canvas>
+        </section>
+
+        <!-- 数据说明 -->
+        <section class="info-section">
+            <h2>ℹ️ 数据说明</h2>
+            <div class="info-content">
+                <div class="info-item">
+                    <h4>☢️ μSv/h（微西弗每小时）</h4>
+                    <p>剂量当量率单位，表示人体每小时受到的辐射剂量。正常环境本底辐射约为 0.05-0.20 μSv/h。</p>
+                </div>
+                <div class="info-item">
+                    <h4>📊 CPM（计数每分钟）</h4>
+                    <p>Geiger计数器测量单位，表示每分钟检测到的辐射粒子计数。CPM与μSv/h可通过系数换算。</p>
+                </div>
+                <div class="info-item">
+                    <h4>📈 同比增长</h4>
+                    <p>与初始值（首次录入值）相比的变化率，计算公式：(当前值 - 初始值) / 初始值 × 100%</p>
+                </div>
+                <div class="info-item">
+                    <h4>📉 环比增长</h4>
+                    <p>与上一监测周期相比的变化率，反映短期变化趋势。</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 录入入口按钮 -->
+    <div class="admin-entry">
+        <a href="admin.html" class="admin-btn">📝</a>
+    </div>
+
+    <footer>
+        <div class="container">
+            <p>数据来源: 人工监测录入 | 仅供科研参考</p>
+            <p>© 2026 Seawater Radiation Monitor</p>
+        </div>
+    </footer>
+
+    <script src="js/api.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

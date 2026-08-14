@@ -1,0 +1,241 @@
+/* 基础样式 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+    background: linear-gradient(135deg, #1a3a5c 0%, #0d2137 100%);
+    min-height: 100vh;
+    color: #fff;
+}
+
+.container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* 头部 */
+header {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 30px 0;
+    text-align: center;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+header h1 {
+    font-size: 2.2rem;
+    margin-bottom: 10px;
+    background: linear-gradient(90deg, #4fc3f7, #0288d1);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+header p {
+    color: #90a4ae;
+    font-size: 1rem;
+}
+
+/* 管理入口 */
+.admin-entry {
+    position: fixed;
+    bottom: 80px;
+    right: 30px;
+    z-index: 100;
+}
+
+.admin-btn {
+    display: block;
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, #0288d1, #01579b);
+    border-radius: 50%;
+    text-align: center;
+    line-height: 60px;
+    font-size: 28px;
+    color: #fff;
+    text-decoration: none;
+    box-shadow: 0 4px 15px rgba(2, 136, 209, 0.4);
+    transition: all 0.3s ease;
+}
+
+.admin-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(2, 136, 209, 0.6);
+}
+
+/* 数据展示 */
+.data-display {
+    margin: 30px 0;
+}
+
+.data-display h2 {
+    margin-bottom: 20px;
+    color: #4fc3f7;
+    font-size: 1.3rem;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+}
+
+.stat-card {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+    padding: 18px 12px;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: transform 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-3px);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.stat-card.highlight {
+    border: 2px solid #4fc3f7;
+    background: rgba(79, 195, 247, 0.15);
+}
+
+.stat-card h3 {
+    color: #90a4ae;
+    font-size: 0.75rem;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    line-height: 1.3;
+}
+
+.stat-card .value {
+    font-size: 1.6rem;
+    font-weight: bold;
+    color: #4fc3f7;
+}
+
+.stat-card .unit {
+    font-size: 0.75rem;
+    color: #78909c;
+    margin-top: 3px;
+}
+
+.stat-card .trend {
+    font-size: 1rem;
+    margin-top: 5px;
+    font-weight: bold;
+}
+
+.stat-card .trend.up {
+    color: #4caf50;
+}
+
+.stat-card .trend.down {
+    color: #f44336;
+}
+
+.stat-card .trend.stable {
+    color: #ff9800;
+}
+
+.stat-card .trend-desc {
+    font-size: 0.8rem;
+    color: #90a4ae;
+    margin-top: 5px;
+}
+
+/* 图表区域 */
+.chart-section {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+    padding: 25px;
+    margin: 30px 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.chart-section h2 {
+    margin-bottom: 20px;
+    color: #4fc3f7;
+    font-size: 1.3rem;
+}
+
+#trend-chart {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+    padding: 15px;
+}
+
+/* 数据说明 */
+.info-section {
+    margin: 30px 0;
+}
+
+.info-section h2 {
+    margin-bottom: 20px;
+    color: #4fc3f7;
+    font-size: 1.3rem;
+}
+
+.info-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 15px;
+}
+
+.info-item {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+    padding: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.info-item h4 {
+    color: #4fc3f7;
+    margin-bottom: 10px;
+    font-size: 1rem;
+}
+
+.info-item p {
+    color: #b0bec5;
+    line-height: 1.5;
+    font-size: 0.9rem;
+}
+
+/* 页脚 */
+footer {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 20px 0;
+    text-align: center;
+    margin-top: 50px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+footer p {
+    color: #78909c;
+    margin: 5px 0;
+    font-size: 0.9rem;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    header h1 {
+        font-size: 1.6rem;
+    }
+
+    .stat-card .value {
+        font-size: 1.4rem;
+    }
+    
+    .admin-entry {
+        bottom: 20px;
+        right: 20px;
+    }
+}
