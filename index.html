@@ -17,6 +17,7 @@
             z-index: 10;
             display: flex;
             gap: 10px;
+            flex-wrap: wrap;
         }
         .chart-toggle label {
             display: flex;
@@ -24,7 +25,7 @@
             gap: 5px;
             cursor: pointer;
             color: #fff;
-            font-size: 14px;
+            font-size: 13px;
             background: rgba(0, 0, 0, 0.5);
             padding: 5px 10px;
             border-radius: 5px;
@@ -32,8 +33,11 @@
         .chart-toggle input[type="checkbox"] {
             cursor: pointer;
         }
-        .chart-toggle .checkbox-uSv {
+        .chart-toggle .checkbox-uSvMax {
             accent-color: #4fc3f7;
+        }
+        .chart-toggle .checkbox-uSvAvg {
+            accent-color: #00e676;
         }
         .chart-toggle .checkbox-cpm {
             accent-color: #ff9800;
@@ -75,46 +79,78 @@
         <section class="data-display">
             <h2>📊 监测数据</h2>
             <div class="stats-grid">
+                <!-- 当前值 -->
                 <div class="stat-card highlight">
-                    <h3>当前值 (μSv/h)</h3>
-                    <div class="value" id="current-uSv">--</div>
+                    <h3>当前最大值 (μSv/h)</h3>
+                    <div class="value" id="current-uSv-max">--</div>
+                </div>
+                <div class="stat-card highlight">
+                    <h3>当前平均值 (μSv/h)</h3>
+                    <div class="value" id="current-uSv-avg">--</div>
                 </div>
                 <div class="stat-card highlight">
                     <h3>当前值 (CPM)</h3>
                     <div class="value" id="current-cpm">--</div>
                 </div>
+
+                <!-- 初始值 -->
                 <div class="stat-card">
-                    <h3>初始值 (μSv/h)</h3>
-                    <div class="value" id="initial-uSv">--</div>
+                    <h3>初始最大值 (μSv/h)</h3>
+                    <div class="value" id="initial-uSv-max">--</div>
+                </div>
+                <div class="stat-card">
+                    <h3>初始平均值 (μSv/h)</h3>
+                    <div class="value" id="initial-uSv-avg">--</div>
                 </div>
                 <div class="stat-card">
                     <h3>初始值 (CPM)</h3>
                     <div class="value" id="initial-cpm">--</div>
                 </div>
+
+                <!-- 同比增长 -->
                 <div class="stat-card">
-                    <h3>同比增长 (μSv)</h3>
-                    <div class="value" id="yoy-uSv">--</div>
-                    <div class="trend" id="yoy-uSv-trend"></div>
+                    <h3>同比 (最大μSv)</h3>
+                    <div class="value" id="yoy-uSv-max">--</div>
+                    <div class="trend" id="yoy-uSv-max-trend"></div>
                 </div>
                 <div class="stat-card">
-                    <h3>同比增长 (CPM)</h3>
+                    <h3>同比 (平均μSv)</h3>
+                    <div class="value" id="yoy-uSv-avg">--</div>
+                    <div class="trend" id="yoy-uSv-avg-trend"></div>
+                </div>
+                <div class="stat-card">
+                    <h3>同比 (CPM)</h3>
                     <div class="value" id="yoy-cpm">--</div>
                     <div class="trend" id="yoy-cpm-trend"></div>
                 </div>
+
+                <!-- 环比增长 -->
                 <div class="stat-card">
-                    <h3>环比增长 (μSv)</h3>
-                    <div class="value" id="mom-uSv">--</div>
-                    <div class="trend" id="mom-uSv-trend"></div>
+                    <h3>环比 (最大μSv)</h3>
+                    <div class="value" id="mom-uSv-max">--</div>
+                    <div class="trend" id="mom-uSv-max-trend"></div>
                 </div>
                 <div class="stat-card">
-                    <h3>环比增长 (CPM)</h3>
+                    <h3>环比 (平均μSv)</h3>
+                    <div class="value" id="mom-uSv-avg">--</div>
+                    <div class="trend" id="mom-uSv-avg-trend"></div>
+                </div>
+                <div class="stat-card">
+                    <h3>环比 (CPM)</h3>
                     <div class="value" id="mom-cpm">--</div>
                     <div class="trend" id="mom-cpm-trend"></div>
                 </div>
+
+                <!-- 趋势与元数据 -->
                 <div class="stat-card">
-                    <h3>变化趋势</h3>
-                    <div class="value" id="trend-direction">--</div>
-                    <div class="trend-desc" id="trend-desc">--</div>
+                    <h3>最大值趋势</h3>
+                    <div class="value" id="trend-max-direction">--</div>
+                    <div class="trend-desc" id="trend-max-desc">--</div>
+                </div>
+                <div class="stat-card">
+                    <h3>平均值趋势</h3>
+                    <div class="value" id="trend-avg-direction">--</div>
+                    <div class="trend-desc" id="trend-avg-desc">--</div>
                 </div>
                 <div class="stat-card">
                     <h3>数据总量</h3>
@@ -133,8 +169,12 @@
             <h2>📈 变化趋势</h2>
             <div class="chart-toggle">
                 <label>
-                    <input type="checkbox" id="toggle-usv" class="checkbox-uSv" checked onchange="toggleDataset('uSv', this.checked)">
-                    μSv/h
+                    <input type="checkbox" id="toggle-usv-max" class="checkbox-uSvMax" checked onchange="toggleDataset('uSvMax', this.checked)">
+                    μSv/h (最大值)
+                </label>
+                <label>
+                    <input type="checkbox" id="toggle-usv-avg" class="checkbox-uSvAvg" checked onchange="toggleDataset('uSvAvg', this.checked)">
+                    μSv/h (平均值)
                 </label>
                 <label>
                     <input type="checkbox" id="toggle-cpm" class="checkbox-cpm" checked onchange="toggleDataset('cpm', this.checked)">
@@ -150,7 +190,7 @@
             <div class="info-content">
                 <div class="info-item">
                     <h4>☢️ μSv/h（微西弗每小时）</h4>
-                    <p>剂量当量率单位，表示人体每小时受到的辐射剂量。正常环境本底辐射约为 0.05-0.20 μSv/h。</p>
+                    <p>剂量当量率单位，支持记录单次调取的<b>最大值</b>与<b>平均值</b>。正常环境本底辐射约为 0.05-0.20 μSv/h。</p>
                 </div>
                 <div class="info-item">
                     <h4>📊 CPM（计数每分钟）</h4>

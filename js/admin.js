@@ -4,18 +4,29 @@
  */
 
 // 初始化
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
   // 检查是否已连接GitHub
   const savedToken = RadiationAPI.getAuthToken();
   if (savedToken) {
-    // 显示已连接状态，但不自动填充 Token 到输入框（安全考虑）
-    validateAndShowTokenStatus(savedToken);
+    // 填充输入框
+    const tokenInput = document.getElementById('github-token');
+    if (tokenInput) tokenInput.value = savedToken;
+    
+    // 显示已连接状态，并自动登录校验进入录入页面
     const statusTextEl = document.getElementById('token-status-text');
-    if (statusTextEl) statusTextEl.textContent = '已连接（session）';
     const statusEl = document.getElementById('token-status');
-    if (statusEl) statusEl.className = 'token-status connected';
-    // 自动进入录入页面
-    showEntryPanel();
+    if (statusTextEl) statusTextEl.textContent = '验证中...';
+    
+    const isValid = await RadiationAPI.validateToken(savedToken);
+    if (isValid) {
+      if (statusTextEl) statusTextEl.textContent = '已自动连接';
+      if (statusEl) statusEl.className = 'token-status connected';
+      showEntryPanel();
+    } else {
+      if (statusTextEl) statusTextEl.textContent = 'Token 已失效';
+      if (statusEl) statusEl.className = 'token-status disconnected';
+      showLoginPanel();
+    }
   } else {
     showLoginPanel();
   }
@@ -52,7 +63,7 @@ async function connectGitHub() {
     if (isValid) {
       RadiationAPI.saveAuthToken(token);
       statusEl.className = 'token-status connected';
-      statusTextEl.textContent = '已连接（session）';
+      statusTextEl.textContent = '已连接';
       showNotification('GitHub 连接成功', 'success');
       showEntryPanel();
     } else {
@@ -65,33 +76,6 @@ async function connectGitHub() {
     statusEl.className = 'token-status disconnected';
     statusTextEl.textContent = '连接失败';
     showNotification('连接失败，请重试', 'error');
-  }
-}
-
-/**
- * 验证Token并显示状态
- * @param {string} token - GitHub Token
- */
-async function validateAndShowTokenStatus(token) {
-  const statusEl = document.getElementById('token-status');
-  const statusTextEl = document.getElementById('token-status-text');
-  
-  if (!statusEl || !statusTextEl) return;
-  
-  try {
-    const isValid = await RadiationAPI.validateToken(token);
-    
-    if (isValid) {
-      statusEl.className = 'token-status connected';
-      statusTextEl.textContent = '已连接（session）';
-    } else {
-      statusEl.className = 'token-status disconnected';
-      statusTextEl.textContent = '连接失效';
-    }
-  } catch (error) {
-    console.error('验证Token失败:', error);
-    statusEl.className = 'token-status disconnected';
-    statusTextEl.textContent = '验证失败';
   }
 }
 
@@ -138,14 +122,16 @@ function logout() {
  */
 async function submitData() {
   const timeInput = document.getElementById('measure-time');
-  const valueUsvInput = document.getElementById('value-uSv');
+  const valueUsvMaxInput = document.getElementById('value-uSv-max');
+  const valueUsvAvgInput = document.getElementById('value-uSv-avg');
   const valueCpmInput = document.getElementById('value-cpm');
   const msgEl = document.getElementById('submit-msg');
   
-  if (!timeInput || !valueUsvInput || !valueCpmInput || !msgEl) return;
+  if (!timeInput || !valueUsvMaxInput || !valueUsvAvgInput || !valueCpmInput || !msgEl) return;
   
   const time = timeInput.value;
-  const valueUsv = parseFloat(valueUsvInput.value);
+  const valueUsvMax = parseFloat(valueUsvMaxInput.value);
+  const valueUsvAvg = parseFloat(valueUsvAvgInput.value);
   const valueCpm = parseFloat(valueCpmInput.value);
   
   // 验证输入
@@ -154,8 +140,8 @@ async function submitData() {
     return;
   }
   
-  if (isNaN(valueUsv) && isNaN(valueCpm)) {
-    showNotification('请至少输入一个辐射值（μSv/h 或 CPM）', 'warning');
+  if (isNaN(valueUsvMax) && isNaN(valueUsvAvg) && isNaN(valueCpm)) {
+    showNotification('请至少输入一个辐射值（最大值、平均值或 CPM）', 'warning');
     return;
   }
   
@@ -163,7 +149,8 @@ async function submitData() {
   const record = {
     id: Date.now(),
     time,
-    valueUsv: isNaN(valueUsv) ? null : valueUsv,
+    valueUsvMax: isNaN(valueUsvMax) ? null : valueUsvMax,
+    valueUsvAvg: isNaN(valueUsvAvg) ? null : valueUsvAvg,
     valueCpm: isNaN(valueCpm) ? null : valueCpm
   };
   
@@ -180,7 +167,7 @@ async function submitData() {
   } catch (e) {
     console.error('保存失败:', e);
     // 回退到 localStorage
-    let history = getHistory();
+    let history = getStorageItem(CONFIG.STORAGE_KEY, []);
     history.unshift(record);
     if (history.length > CONFIG.MAX_RECORDS) {
       history = history.slice(0, CONFIG.MAX_RECORDS);
@@ -192,19 +179,12 @@ async function submitData() {
   }
   
   // 清空输入
-  valueUsvInput.value = '';
+  valueUsvMaxInput.value = '';
+  valueUsvAvgInput.value = '';
   valueCpmInput.value = '';
   
   // 1.5秒后跳转回主页
   setTimeout(() => {
     window.location.href = 'index.html';
   }, 1500);
-}
-
-/**
- * 获取历史记录（本地备份）
- * @returns {Array} 记录数组
- */
-function getHistory() {
-  return getStorageItem(CONFIG.STORAGE_KEY, []);
 }

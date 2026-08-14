@@ -9,11 +9,14 @@ const CONFIG = {
   OWNER: 'xishuai416',
   REPO: 'seawater-radiation',
   API_BASE: 'https://api.github.com',
+  // GitHub 国内镜像/代理加速前缀
+  PROXY_PREFIX: 'https://gh.faifai.top/',
   // Gist raw 资源地址（不消耗 GitHub API rate limit）
   GIST_RAW_URL: 'https://gist.githubusercontent.com/xishuai416/ada469ec18bdbbebf32b356ee3e4564e/raw/history.json',
 
   // 数据存储配置
   STORAGE_KEY: 'seawater_radiation_data',
+  TOKEN_STORAGE_KEY: 'github_token',
   MAX_RECORDS: 100,  // 最多保留100条记录
 
   // 图表配置
@@ -31,9 +34,10 @@ const CONFIG = {
 
   // 样式配置
   COLORS: {
-    primary: '#4fc3f7',
+    primary: '#4fc3f7',      // 最大值/主色
+    primaryAvg: '#00e676',   // 平均值
     secondary: '#0288d1',
-    warning: '#ff9800',
+    warning: '#ff9800',      // CPM / 警告
     success: '#4caf50',
     danger: '#f44336',
     text: '#fff',

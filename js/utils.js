@@ -112,14 +112,14 @@ function removeStorageItem(key) {
 }
 
 /**
- * 验证并清理输入数据
+ * 验证并清理输入数据（兼容旧的 valueUsv，并支持 valueUsvMax, valueUsvAvg）
  * @param {Object} data - 待验证的数据
  * @returns {Object|null} 验证通过的数据，失败返回 null
  */
 function validateRecord(data) {
   if (!data) return null;
   
-  const { time, valueUsv, valueCpm } = data;
+  const { time, valueUsv, valueUsvMax, valueUsvAvg, valueCpm } = data;
   
   // 时间验证
   if (!time || isNaN(new Date(time).getTime())) {
@@ -127,11 +127,20 @@ function validateRecord(data) {
     return null;
   }
   
-  // 至少需要一个有效值
-  const usv = valueUsv !== null && valueUsv !== undefined ? parseFloat(valueUsv) : null;
+  // 兼容逻辑：如果没有单独传 Max 或 Avg，优先使用 valueUsv 作为两者的默认值
+  let max = valueUsvMax !== undefined && valueUsvMax !== null ? parseFloat(valueUsvMax) : null;
+  let avg = valueUsvAvg !== undefined && valueUsvAvg !== null ? parseFloat(valueUsvAvg) : null;
+  
+  if (isNaN(max) && valueUsv !== undefined && valueUsv !== null && !isNaN(parseFloat(valueUsv))) {
+    max = parseFloat(valueUsv);
+  }
+  if (isNaN(avg) && valueUsv !== undefined && valueUsv !== null && !isNaN(parseFloat(valueUsv))) {
+    avg = parseFloat(valueUsv);
+  }
+
   const cpm = valueCpm !== null && valueCpm !== undefined ? parseFloat(valueCpm) : null;
   
-  if (isNaN(usv) && isNaN(cpm)) {
+  if (isNaN(max) && isNaN(avg) && isNaN(cpm)) {
     console.error('至少需要一个有效的辐射值');
     return null;
   }
@@ -139,18 +148,19 @@ function validateRecord(data) {
   return {
     id: data.id || Date.now(),
     time: new Date(time).toISOString(),
-    valueUsv: isNaN(usv) ? null : usv,
+    valueUsvMax: isNaN(max) ? null : max,
+    valueUsvAvg: isNaN(avg) ? null : avg,
     valueCpm: isNaN(cpm) ? null : cpm
   };
 }
 
 /**
- * 生成测试数据
+ * 生成测试数据（更新生成 valueUsvMax, valueUsvAvg, valueCpm）
  * @param {number} count - 生成数据条数
  * @param {number} startTime - 起始时间戳
  * @returns {Array} 生成的记录数组
  */
-function generateTestData(count, startTime = null) {
+function generateTestData_fromUtils(count, startTime = null) {
   const records = [];
   const baseTime = startTime || (Date.now() - count * CONFIG.TEST_TIME_INTERVAL);
   let baseUsv = CONFIG.TEST_BASE_USV;
@@ -158,10 +168,12 @@ function generateTestData(count, startTime = null) {
   
   for (let i = 0; i < count; i++) {
     const trend = i * 0.0001;
-    const randomUsv = (Math.random() - 0.5) * 0.02;
+    const randomUsvAvg = (Math.random() - 0.5) * 0.02;
+    const randomUsvMaxOffset = Math.random() * 0.015 + 0.005; // 最大值比平均值高 0.005~0.02
     const randomCpm = (Math.random() - 0.5) * 5;
     
-    const valueUsv = Math.max(0.05, baseUsv + trend + randomUsv);
+    const valueUsvAvg = Math.max(0.05, baseUsv + trend + randomUsvAvg);
+    const valueUsvMax = valueUsvAvg + randomUsvMaxOffset;
     const valueCpm = Math.max(20, baseCpm + trend * 200 + randomCpm);
     
     const time = new Date(baseTime + i * CONFIG.TEST_TIME_INTERVAL).toISOString();
@@ -169,7 +181,8 @@ function generateTestData(count, startTime = null) {
     records.push({
       id: Date.now() + i,
       time,
-      valueUsv: parseFloat(valueUsv.toFixed(3)),
+      valueUsvMax: parseFloat(valueUsvMax.toFixed(3)),
+      valueUsvAvg: parseFloat(valueUsvAvg.toFixed(3)),
       valueCpm: parseFloat(valueCpm.toFixed(2))
     });
   }

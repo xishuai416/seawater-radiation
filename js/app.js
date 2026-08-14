@@ -7,7 +7,7 @@
 const AppState = {
   trendChart: null,
   currentRecord: null,
-  chartVisible: { uSv: true, cpm: true },
+  chartVisible: { uSvMax: true, uSvAvg: true, cpm: true },
   history: []
 };
 
@@ -79,17 +79,23 @@ async function loadHistoryData() {
 
 /**
  * 切换数据集可见性
- * @param {string} type - 数据集类型 (uSv 或 cpm)
+ * @param {string} type - 数据集类型 (uSvMax, uSvAvg, cpm)
  * @param {boolean} visible - 是否可见
  */
 function toggleDataset(type, visible) {
   AppState.chartVisible[type] = visible;
   
   if (AppState.trendChart) {
-    const datasetIndex = type === 'uSv' ? 0 : 1;
+    let datasetIndex = 0;
+    if (type === 'uSvMax') datasetIndex = 0;
+    else if (type === 'uSvAvg') datasetIndex = 1;
+    else if (type === 'cpm') datasetIndex = 2;
+
     const meta = AppState.trendChart.getDatasetMeta(datasetIndex);
-    meta.hidden = !visible;
-    AppState.trendChart.update();
+    if (meta) {
+      meta.hidden = !visible;
+      AppState.trendChart.update();
+    }
   }
 }
 
@@ -99,89 +105,52 @@ function toggleDataset(type, visible) {
  * @param {Array} history - 历史记录
  */
 async function updateDisplay(record, history) {
-  if (!record || !history || history.length === 0) return;
-  
-  // 查找首条记录（初始值）
+  if (!record || !history || history.length === 0) return;  
   const firstRecord = history[history.length - 1];
   
-  // 当前值
-  const currentUsvEl = document.getElementById('current-uSv');
-  const currentCpmEl = document.getElementById('current-cpm');
-  if (currentUsvEl) currentUsvEl.textContent = record.valueUsv !== null ? record.valueUsv.toFixed(3) : '--';
-  if (currentCpmEl) currentCpmEl.textContent = record.valueCpm !== null ? record.valueCpm.toFixed(2) : '--';
+  // 兼容旧字段逻辑：如果在旧数据中只有 valueUsv，则当作 Max 和 Avg
+  const curMax = record.valueUsvMax !== undefined && record.valueUsvMax !== null ? record.valueUsvMax : record.valueUsv;
+  const curAvg = record.valueUsvAvg !== undefined && record.valueUsvAvg !== null ? record.valueUsvAvg : record.valueUsv;
+  const curCpm = record.valueCpm;
+
+  const firstMax = firstRecord ? (firstRecord.valueUsvMax !== undefined && firstRecord.valueUsvMax !== null ? firstRecord.valueUsvMax : firstRecord.valueUsv) : null;
+  const firstAvg = firstRecord ? (firstRecord.valueUsvAvg !== undefined && firstRecord.valueUsvAvg !== null ? firstRecord.valueUsvAvg : firstRecord.valueUsv) : null;
+  const firstCpm = firstRecord ? firstRecord.valueCpm : null;
+
+  // 1. 当前值
+  const curMaxEl = document.getElementById('current-uSv-max');
+  const curAvgEl = document.getElementById('current-uSv-avg');
+  const curCpmEl = document.getElementById('current-cpm');
+  if (curMaxEl) curMaxEl.textContent = curMax !== undefined && curMax !== null ? curMax.toFixed(3) : '--';
+  if (curAvgEl) curAvgEl.textContent = curAvg !== undefined && curAvg !== null ? curAvg.toFixed(3) : '--';
+  if (curCpmEl) curCpmEl.textContent = curCpm !== undefined && curCpm !== null ? curCpm.toFixed(2) : '--';
   
-  // 初始值
-  if (firstRecord) {
-    const initialUsvEl = document.getElementById('initial-uSv');
-    const initialCpmEl = document.getElementById('initial-cpm');
-    if (initialUsvEl) initialUsvEl.textContent = firstRecord.valueUsv !== null ? firstRecord.valueUsv.toFixed(3) : '--';
-    if (initialCpmEl) initialCpmEl.textContent = firstRecord.valueCpm !== null ? firstRecord.valueCpm.toFixed(2) : '--';
-  } else {
-    const initialUsvEl = document.getElementById('initial-uSv');
-    const initialCpmEl = document.getElementById('initial-cpm');
-    if (initialUsvEl) initialUsvEl.textContent = '--';
-    if (initialCpmEl) initialCpmEl.textContent = '--';
-  }
+  // 2. 初始值
+  const initMaxEl = document.getElementById('initial-uSv-max');
+  const initAvgEl = document.getElementById('initial-uSv-avg');
+  const initCpmEl = document.getElementById('initial-cpm');
+  if (initMaxEl) initMaxEl.textContent = firstMax !== undefined && firstMax !== null ? firstMax.toFixed(3) : '--';
+  if (initAvgEl) initAvgEl.textContent = firstAvg !== undefined && firstAvg !== null ? firstAvg.toFixed(3) : '--';
+  if (initCpmEl) initCpmEl.textContent = firstCpm !== undefined && firstCpm !== null ? firstCpm.toFixed(2) : '--';
   
-  // 同比增长 (μSv)
-  if (record.valueUsv !== null && firstRecord && firstRecord.valueUsv !== null && firstRecord.valueUsv > 0) {
-    const yoyUsv = ((record.valueUsv - firstRecord.valueUsv) / firstRecord.valueUsv * 100).toFixed(2);
-    const yoyUsvEl = document.getElementById('yoy-uSv');
-    const yoyUsvTrendEl = document.getElementById('yoy-uSv-trend');
-    if (yoyUsvEl) yoyUsvEl.textContent = `${yoyUsv > 0 ? '+' : ''}${yoyUsv}%`;
-    if (yoyUsvTrendEl) updateTrendClass(yoyUsvTrendEl, yoyUsv);
-  } else {
-    const yoyUsvEl = document.getElementById('yoy-uSv');
-    const yoyUsvTrendEl = document.getElementById('yoy-uSv-trend');
-    if (yoyUsvEl) yoyUsvEl.textContent = '--';
-    if (yoyUsvTrendEl) { yoyUsvTrendEl.textContent = ''; yoyUsvTrendEl.className = 'trend'; }
-  }
+  // 3. 同比增长
+  updateGrowthDisplay('yoy-uSv-max', 'yoy-uSv-max-trend', curMax, firstMax);
+  updateGrowthDisplay('yoy-uSv-avg', 'yoy-uSv-avg-trend', curAvg, firstAvg);
+  updateGrowthDisplay('yoy-cpm', 'yoy-cpm-trend', curCpm, firstCpm);
   
-  // 同比增长 (CPM)
-  if (record.valueCpm !== null && firstRecord && firstRecord.valueCpm !== null && firstRecord.valueCpm > 0) {
-    const yoyCpm = ((record.valueCpm - firstRecord.valueCpm) / firstRecord.valueCpm * 100).toFixed(2);
-    const yoyCpmEl = document.getElementById('yoy-cpm');
-    const yoyCpmTrendEl = document.getElementById('yoy-cpm-trend');
-    if (yoyCpmEl) yoyCpmEl.textContent = `${yoyCpm > 0 ? '+' : ''}${yoyCpm}%`;
-    if (yoyCpmTrendEl) updateTrendClass(yoyCpmTrendEl, yoyCpm);
-  } else {
-    const yoyCpmEl = document.getElementById('yoy-cpm');
-    const yoyCpmTrendEl = document.getElementById('yoy-cpm-trend');
-    if (yoyCpmEl) yoyCpmEl.textContent = '--';
-    if (yoyCpmTrendEl) { yoyCpmTrendEl.textContent = ''; yoyCpmTrendEl.className = 'trend'; }
-  }
-  
-  // 环比增长 (μSv)
+  // 4. 环比增长
   const prevRecord = history.find(r => r.id !== record.id);
-  if (record.valueUsv !== null && prevRecord && prevRecord.valueUsv !== null) {
-    const momUsv = ((record.valueUsv - prevRecord.valueUsv) / prevRecord.valueUsv * 100).toFixed(2);
-    const momUsvEl = document.getElementById('mom-uSv');
-    const momUsvTrendEl = document.getElementById('mom-uSv-trend');
-    if (momUsvEl) momUsvEl.textContent = `${momUsv > 0 ? '+' : ''}${momUsv}%`;
-    if (momUsvTrendEl) updateTrendClass(momUsvTrendEl, momUsv);
-  } else {
-    const momUsvEl = document.getElementById('mom-uSv');
-    const momUsvTrendEl = document.getElementById('mom-uSv-trend');
-    if (momUsvEl) momUsvEl.textContent = '--';
-    if (momUsvTrendEl) { momUsvTrendEl.textContent = ''; momUsvTrendEl.className = 'trend'; }
-  }
+  const prevMax = prevRecord ? (prevRecord.valueUsvMax !== undefined && prevRecord.valueUsvMax !== null ? prevRecord.valueUsvMax : prevRecord.valueUsv) : null;
+  const prevAvg = prevRecord ? (prevRecord.valueUsvAvg !== undefined && prevRecord.valueUsvAvg !== null ? prevRecord.valueUsvAvg : prevRecord.valueUsv) : null;
+  const prevCpm = prevRecord ? prevRecord.valueCpm : null;
+
+  updateGrowthDisplay('mom-uSv-max', 'mom-uSv-max-trend', curMax, prevMax);
+  updateGrowthDisplay('mom-uSv-avg', 'mom-uSv-avg-trend', curAvg, prevAvg);
+  updateGrowthDisplay('mom-cpm', 'mom-cpm-trend', curCpm, prevCpm);
   
-  // 环比增长 (CPM)
-  if (record.valueCpm !== null && prevRecord && prevRecord.valueCpm !== null) {
-    const momCpm = ((record.valueCpm - prevRecord.valueCpm) / prevRecord.valueCpm * 100).toFixed(2);
-    const momCpmEl = document.getElementById('mom-cpm');
-    const momCpmTrendEl = document.getElementById('mom-cpm-trend');
-    if (momCpmEl) momCpmEl.textContent = `${momCpm > 0 ? '+' : ''}${momCpm}%`;
-    if (momCpmTrendEl) updateTrendClass(momCpmTrendEl, momCpm);
-  } else {
-    const momCpmEl = document.getElementById('mom-cpm');
-    const momCpmTrendEl = document.getElementById('mom-cpm-trend');
-    if (momCpmEl) momCpmEl.textContent = '--';
-    if (momCpmTrendEl) { momCpmTrendEl.textContent = ''; momCpmTrendEl.className = 'trend'; }
-  }
-  
-  // 变化趋势
-  updateTrendDescription(record, history);
+  // 5. 变化趋势（最大值 & 平均值）
+  updateFieldTrendDescription('trend-max-direction', 'trend-max-desc', history, 'max');
+  updateFieldTrendDescription('trend-avg-direction', 'trend-avg-desc', history, 'avg');
   
   // 最后更新时间
   if (record.time) {
@@ -194,68 +163,85 @@ async function updateDisplay(record, history) {
 }
 
 /**
- * 更新趋势描述
- * @param {Object} record - 当前记录
- * @param {Array} history - 历史记录
+ * 辅助方法：更新增长率卡片
  */
-function updateTrendDescription(record, history) {
+function updateGrowthDisplay(valElemId, trendElemId, curVal, baseVal) {
+  const valEl = document.getElementById(valElemId);
+  const trendEl = document.getElementById(trendElemId);
+  
+  if (curVal !== null && curVal !== undefined && baseVal !== null && baseVal !== undefined && baseVal > 0) {
+    const rate = ((curVal - baseVal) / baseVal * 100).toFixed(2);
+    if (valEl) valEl.textContent = `${rate > 0 ? '+' : ''}${rate}%`;
+    if (trendEl) updateTrendClass(trendEl, rate);
+  } else {
+    if (valEl) valEl.textContent = '--';
+    if (trendEl) { trendEl.textContent = ''; trendEl.className = 'trend'; }
+  }
+}
+
+/**
+ * 针对特定字段（max 或 avg）计算并显示趋势描述
+ */
+function updateFieldTrendDescription(directionElemId, descElemId, history, fieldType) {
   const recentRecords = history.slice(0, CONFIG.TREND_HISTORY_COUNT);
+  const dirEl = document.getElementById(directionElemId);
+  const descEl = document.getElementById(descElemId);
   
-  const trendDirectionEl = document.getElementById('trend-direction');
-  const trendDescEl = document.getElementById('trend-desc');
-  
-  if (!trendDirectionEl || !trendDescEl) return;
+  if (!dirEl || !descEl) return;
   
   if (recentRecords.length < 2) {
-    trendDirectionEl.textContent = '--';
-    trendDescEl.textContent = '数据不足，无法判断趋势';
+    dirEl.textContent = '--';
+    descEl.textContent = '数据不足';
     return;
   }
   
-  // 计算最近几条记录的平均变化率
-  const hasUsv = record.valueUsv !== null;
   let totalChange = 0;
   let count = 0;
   
   for (let i = 1; i < recentRecords.length; i++) {
-    let change = 0;
-    if (hasUsv && recentRecords[i-1].valueUsv !== null && recentRecords[i].valueUsv !== null && recentRecords[i].valueUsv > 0) {
-      change = (recentRecords[i-1].valueUsv - recentRecords[i].valueUsv) / recentRecords[i].valueUsv * 100;
-    } else if (recentRecords[i-1].valueCpm !== null && recentRecords[i].valueCpm !== null && recentRecords[i].valueCpm > 0) {
-      change = (recentRecords[i-1].valueCpm - recentRecords[i].valueCpm) / recentRecords[i].valueCpm * 100;
-    }
+    const prevR = recentRecords[i];
+    const curR = recentRecords[i-1];
     
-    if (change !== 0) {
+    let curV = fieldType === 'max' 
+      ? (curR.valueUsvMax !== undefined && curR.valueUsvMax !== null ? curR.valueUsvMax : curR.valueUsv)
+      : (curR.valueUsvAvg !== undefined && curR.valueUsvAvg !== null ? curR.valueUsvAvg : curR.valueUsv);
+
+    let prevV = fieldType === 'max'
+      ? (prevR.valueUsvMax !== undefined && prevR.valueUsvMax !== null ? prevR.valueUsvMax : prevR.valueUsv)
+      : (prevR.valueUsvAvg !== undefined && prevR.valueUsvAvg !== null ? prevR.valueUsvAvg : prevR.valueUsv);
+
+    if (curV !== null && curV !== undefined && prevV !== null && prevV !== undefined && prevV > 0) {
+      const change = (curV - prevV) / prevV * 100;
       totalChange += change;
       count++;
     }
   }
   
   if (count === 0) {
-    trendDirectionEl.textContent = '--';
-    trendDescEl.textContent = '无有效数据';
+    dirEl.textContent = '--';
+    descEl.textContent = '无有效数据';
     return;
   }
   
   const avgChange = totalChange / count;
   
   if (avgChange > CONFIG.TREND_THRESHOLD) {
-    trendDirectionEl.textContent = '📈 明显上升';
-    trendDirectionEl.style.color = CONFIG.COLORS.success;
-    trendDescEl.textContent = '近5次监测呈持续上升趋势';
+    dirEl.textContent = '📈 明显上升';
+    dirEl.style.color = CONFIG.COLORS.danger;
+    descEl.textContent = '近5次明显上升';
   } else if (avgChange < -CONFIG.TREND_THRESHOLD) {
-    trendDirectionEl.textContent = '📉 明显下降';
-    trendDirectionEl.style.color = CONFIG.COLORS.danger;
-    trendDescEl.textContent = '近5次监测呈持续下降趋势';
-  } else if (Math.abs(avgChange) <= CONFIG.TREND_THRESHOLD) {
-    trendDirectionEl.textContent = '➡️ 基本稳定';
-    trendDirectionEl.style.color = CONFIG.COLORS.warning;
-    trendDescEl.textContent = '近5次监测波动在±5%以内';
+    dirEl.textContent = '📉 明显下降';
+    dirEl.style.color = CONFIG.COLORS.success;
+    descEl.textContent = '近5次明显下降';
+  } else {
+    dirEl.textContent = '➡️ 基本稳定';
+    dirEl.style.color = CONFIG.COLORS.warning;
+    descEl.textContent = '波动在±5%以内';
   }
 }
 
 /**
- * 更新图表
+ * 更新图表（支持最大值、平均值、CPM 三条曲线）
  * @param {Array} history - 历史记录
  */
 async function updateChart(history) {
@@ -263,51 +249,60 @@ async function updateChart(history) {
   if (!chartElement) return;
   
   const ctx = chartElement.getContext('2d');
-  
   if (!history || history.length === 0) return;
   
-  // 采样显示（如果数据太多）
+  // 采样显示
   const displayData = sampleData(history, CONFIG.CHART_MAX_POINTS);
   
-  // 准备数据
   const labels = displayData.map(r => {
     const date = new Date(r.time);
     return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
   });
   
-  const usvData = displayData.map(r => r.valueUsv || 0);
+  const usvMaxData = displayData.map(r => (r.valueUsvMax !== undefined && r.valueUsvMax !== null) ? r.valueUsvMax : (r.valueUsv || 0));
+  const usvAvgData = displayData.map(r => (r.valueUsvAvg !== undefined && r.valueUsvAvg !== null) ? r.valueUsvAvg : (r.valueUsv || 0));
   const cpmData = displayData.map(r => r.valueCpm || 0);
   
-  // 销毁旧图表
   if (AppState.trendChart) {
     AppState.trendChart.destroy();
   }
   
-  // 创建新图表（双数据集）
   AppState.trendChart = new Chart(ctx, {
     type: 'line',
     data: {
       labels: labels,
       datasets: [
         {
-          label: '辐射值 (μSv/h)',
-          data: usvData,
+          label: '最大辐射值 (μSv/h)',
+          data: usvMaxData,
           borderColor: CONFIG.COLORS.primary,
-          backgroundColor: `${CONFIG.COLORS.primary}33`,
+          backgroundColor: `${CONFIG.COLORS.primary}22`,
           borderWidth: 2,
-          fill: true,
+          fill: false,
           tension: CONFIG.CHART_TENSION,
           pointRadius: 0,
           pointHoverRadius: 5,
           yAxisID: 'y'
         },
         {
-          label: '辐射值 (CPM)',
+          label: '平均辐射值 (μSv/h)',
+          data: usvAvgData,
+          borderColor: CONFIG.COLORS.primaryAvg,
+          backgroundColor: `${CONFIG.COLORS.primaryAvg}22`,
+          borderWidth: 2,
+          fill: false,
+          tension: CONFIG.CHART_TENSION,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          yAxisID: 'y'
+        },
+        {
+          label: '辐射计数 (CPM)',
           data: cpmData,
           borderColor: CONFIG.COLORS.warning,
-          backgroundColor: `${CONFIG.COLORS.warning}33`,
+          backgroundColor: `${CONFIG.COLORS.warning}22`,
           borderWidth: 2,
-          fill: true,
+          fill: false,
           tension: CONFIG.CHART_TENSION,
           pointRadius: 0,
           pointHoverRadius: 5,
@@ -336,16 +331,10 @@ async function updateChart(history) {
           callbacks: {
             label: function(context) {
               let label = context.dataset.label || '';
-              if (label) {
-                label += ': ';
-              }
+              if (label) label += ': ';
               if (context.parsed.y !== null) {
-                label += context.parsed.y.toFixed(2);
-                if (context.datasetIndex === 0) {
-                  label += ' μSv/h';
-                } else {
-                  label += ' CPM';
-                }
+                label += context.parsed.y.toFixed(context.datasetIndex === 2 ? 2 : 3);
+                label += context.datasetIndex === 2 ? ' CPM' : ' μSv/h';
               }
               return label;
             }

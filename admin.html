@@ -24,7 +24,7 @@
             border-radius: 15px;
             padding: 40px;
             width: 100%;
-            max-width: 450px;
+            max-width: 480px;
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
         .login-box h2 {
@@ -51,6 +51,11 @@
         }
         .form-group input::placeholder {
             color: #78909c;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
         }
         .login-btn {
             width: 100%;
@@ -156,9 +161,9 @@
             <!-- 安全提示 -->
             <div class="security-notice">
                 <h4>🔒 安全说明</h4>
-                <p>• GitHub Token 仅存储在浏览器会话中，关闭标签页后自动清除</p>
+                <p>• GitHub Token 保存于本地浏览器，支持免重复登录</p>
                 <p>• 请勿在公共电脑上保存登录状态</p>
-                <p>• Token 仅用于访问 GitHub Gist，无其他权限</p>
+                <p>• Token 仅用于同步 GitHub Gist 数据</p>
             </div>
 
             <!-- GitHub连接 -->
@@ -187,10 +192,18 @@
                 <label for="measure-time">测量时间</label>
                 <input type="datetime-local" id="measure-time">
             </div>
-            <div class="form-group">
-                <label for="value-uSv">辐射值 (μSv/h)</label>
-                <input type="number" id="value-uSv" step="0.001" placeholder="微西弗">
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="value-uSv-max">微西弗最大值 (μSv/h)</label>
+                    <input type="number" id="value-uSv-max" step="0.001" placeholder="最大值">
+                </div>
+                <div class="form-group">
+                    <label for="value-uSv-avg">微西弗平均值 (μSv/h)</label>
+                    <input type="number" id="value-uSv-avg" step="0.001" placeholder="平均值">
+                </div>
             </div>
+
             <div class="form-group">
                 <label for="value-cpm">辐射值 (CPM)</label>
                 <input type="number" id="value-cpm" step="0.01" placeholder="计数每分钟">
