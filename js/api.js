@@ -8,24 +8,22 @@ const CONFIG = {
   API_BASE: 'https://api.github.com'
 };
 
-// 从 sessionStorage 获取 token（更安全的存储方式）
+// 从 sessionStorage 获取 token（仅使用 sessionStorage，更安全）
 function getAuthToken() {
-  return sessionStorage.getItem('github_token') || localStorage.getItem('github_token') || '';
+  return sessionStorage.getItem('github_token') || '';
 }
 
-// 保存 token
+// 保存 token（仅使用 sessionStorage，关闭标签页自动清除）
 function saveAuthToken(token) {
   if (token) {
     sessionStorage.setItem('github_token', token);
-    // 同时保存到 localStorage 作为备份（可选）
-    localStorage.setItem('github_token', token);
+    // 不再保存到 localStorage，确保 Token 不会长期存储
   }
 }
 
 // 清除 token
 function clearAuthToken() {
   sessionStorage.removeItem('github_token');
-  localStorage.removeItem('github_token');
 }
 
 // 验证 token 是否有效
@@ -61,7 +59,7 @@ async function loadData() {
         const data = await res.json();
         if (data.files && data.files['history.json']) {
           const parsed = JSON.parse(data.files['history.json'].content);
-          // 同步到 localStorage
+          // 同步到 localStorage（仅数据，不含 Token）
           localStorage.setItem('seawater_radiation_data', JSON.stringify(parsed.records || []));
           return parsed.records || [];
         }

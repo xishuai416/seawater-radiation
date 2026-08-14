@@ -16,11 +16,13 @@ document.addEventListener('DOMContentLoaded', function() {
         showLoginPanel();
     }
     
-    // 检查已有的GitHub Token（优先使用 sessionStorage）
+    // 检查已有的GitHub Token（sessionStorage 在页面刷新后仍保留，但关闭标签页会清除）
     const savedToken = getAuthToken();
     if (savedToken) {
-        document.getElementById('github-token').value = savedToken;
+        // 不自动填充 Token 到输入框（安全考虑）
         validateAndShowTokenStatus(savedToken);
+        document.getElementById('token-status-text').textContent = '已连接（session）';
+        document.getElementById('token-status').className = 'token-status connected';
     }
     
     // 生成验证码
@@ -52,7 +54,7 @@ async function connectGitHub() {
     const isValid = await validateToken(token);
     
     if (isValid) {
-        // 保存到 sessionStorage（更安全）
+        // 保存到 sessionStorage（更安全，关闭标签页自动清除）
         saveAuthToken(token);
         statusEl.className = 'token-status connected';
         statusTextEl.textContent = '已连接（session）';
