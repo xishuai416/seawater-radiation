@@ -89,9 +89,11 @@ async function validateToken(token) {
  */
 async function loadData() {
   const token = getAuthToken();
+  console.log('[loadData] Token 状态:', token ? '已设置 (' + token.substring(0, 10) + '...)' : '未设置');
   
   // 1. 如果有 Token，优先通过 GitHub REST API 获取
   if (token) {
+    console.log('[loadData] 步骤 1: 尝试通过 Token 从 Gist API 获取数据');
     try {
       const res = await fetchWithRetry(`${CONFIG.API_BASE}/gists/${CONFIG.GIST_ID}`, {
         headers: {
@@ -99,25 +101,32 @@ async function loadData() {
           'Accept': 'application/vnd.github.v3+json'
         }
       });
+      console.log('[loadData] 步骤 1 响应状态:', res.status);
       
       if (res.ok) {
         const data = await res.json();
+        console.log('[loadData] 步骤 1 解析数据:', data.files ? '有 files' : '无 files');
         if (data.files && data.files['history.json']) {
           const parsed = JSON.parse(data.files['history.json'].content);
+          console.log('[loadData] 步骤 1 云端记录数:', parsed.records ? parsed.records.length : 'undefined');
           // 只有当云端有数据时才覆盖本地
           if (parsed.records && parsed.records.length > 0) {
+            console.log('[loadData] 步骤 1 云端有数据，覆盖本地');
             setStorageItem(CONFIG.STORAGE_KEY, parsed.records);
             return parsed.records;
+          } else {
+            console.log('[loadData] 步骤 1 云端无数据，继续下一步');
           }
         }
       }
     } catch (e) {
-      console.warn('使用 Token 从 Gist API 获取失败:', e);
+      console.warn('[loadData] 步骤 1 异常:', e.message);
     }
   }
 
   // 2. 未登录用户尝试 REST API
   if (!token) {
+    console.log('[loadData] 步骤 2: 未登录用户，尝试 REST API（无 Token）');
     try {
       const res = await fetchWithRetry(`${CONFIG.API_BASE}/gists/${CONFIG.GIST_ID}`, {
         headers: { 'Accept': 'application/vnd.github.v3+json' }
@@ -163,7 +172,7 @@ async function loadData() {
   
   // 4. 最终回退到 localStorage 缓存
   const localData = getStorageItem(CONFIG.STORAGE_KEY, []);
-  console.log('[loadData] 最终返回本地数据:', localData.length, '条');
+  console.log('[loadData] 步骤 4: 返回本地数据，数量:', localData.length);
   return localData;
 }
 
