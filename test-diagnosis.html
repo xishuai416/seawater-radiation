@@ -45,8 +45,8 @@
 
     <!-- 引入模块 -->
     <script src="js/config.js"></script>
-    <script src="js/utils.js"></script>
-    <script src="js/api.js"></script>
+    <script src="js/utils.js?v=20260814b"></script>
+    <script src="js/api.js?v=20260814b"></script>
     
     <script>
         let testResults = {};
@@ -172,9 +172,17 @@
         async function step6() {
             log('=== 步骤 6: 测试加载数据 ===');
             try {
+                // 先检查 localStorage 原始内容
+                const rawLocal = localStorage.getItem(CONFIG.STORAGE_KEY);
+                log('localStorage 原始内容: ' + rawLocal, rawLocal ? 'success' : 'warning');
+                
                 const history = await RadiationAPI.loadData();
                 log('✅ 数据加载成功', 'success');
-                log('   数据量: ' + history.length + ' 条', 'success');
+                log('   数据量: ' + history.length + ' 条', history.length > 0 ? 'success' : 'warning');
+                
+                // 再次检查 localStorage
+                const rawLocalAfter = localStorage.getItem(CONFIG.STORAGE_KEY);
+                log('localStorage 加载后: ' + rawLocalAfter, 'success');
                 
                 if (history.length > 0) {
                     log('   第一条: ' + JSON.stringify(history[0]), 'success');

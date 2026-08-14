@@ -142,13 +142,19 @@ async function loadData() {
   // 3. 降级方案：从 Raw URL / 代理 Raw 获取数据（不限流）
   try {
     const rawUrl = `${CONFIG.GIST_RAW_URL}?_t=${Date.now()}`;
+    console.log('[loadData] 尝试 Raw URL:', rawUrl);
     const rawRes = await fetchWithRetry(rawUrl);
+    console.log('[loadData] Raw 响应状态:', rawRes.status);
     if (rawRes.ok) {
       const parsed = await rawRes.json();
+      console.log('[loadData] Raw 解析结果:', JSON.stringify(parsed).substring(0, 100));
       // 只有当云端有数据时才覆盖本地，避免清空本地数据
       if (parsed.records && parsed.records.length > 0) {
+        console.log('[loadData] 云端有数据，覆盖本地');
         setStorageItem(CONFIG.STORAGE_KEY, parsed.records);
         return parsed.records;
+      } else {
+        console.log('[loadData] 云端无数据，使用本地缓存');
       }
     }
   } catch (e) {
@@ -156,7 +162,9 @@ async function loadData() {
   }
   
   // 4. 最终回退到 localStorage 缓存
-  return getStorageItem(CONFIG.STORAGE_KEY, []);
+  const localData = getStorageItem(CONFIG.STORAGE_KEY, []);
+  console.log('[loadData] 最终返回本地数据:', localData.length, '条');
+  return localData;
 }
 
 /**

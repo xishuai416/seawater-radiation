@@ -1,0 +1,22 @@
+{
+  "kind": "webpage_snapshot",
+  "url": "https://gist.githubusercontent.com/xishuai416/ada469ec18bdbbebf32b356ee3e4564e/raw/history.json",
+  "final_url": "https://gist.githubusercontent.com/xishuai416/ada469ec18bdbbebf32b356ee3e4564e/raw/history.json",
+  "status": 200,
+  "read_status": "ok",
+  "content_type": "text/plain; charset=utf-8",
+  "fetched_at": "2026-08-14T07:11:47.576315300+00:00",
+  "title": "Untitled webpage",
+  "description": "",
+  "site_name": null,
+  "published_at": null,
+  "source_type": "unknown",
+  "text": "{\"records\":[],\"metadata\":{\"updated\":\"2026-08-14T07:03:37.492Z\"}}",
+  "quote_candidates": [
+    "{\"records\":[],\"metadata\":{\"updated\":\"2026-08-14T07:03:37."
+  ],
+  "word_count": 1,
+  "truncated": false,
+  "blocked": false,
+  "source": "direct_http"
+}

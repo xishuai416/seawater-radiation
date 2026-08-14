@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Test</title>
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/api.js"></script>
+</head>
+<body>
+    <h1>Debug Test - 本地模式数据生成测试</h1>
+    <button onclick="testGenerate()">测试生成数据</button>
+    <button onclick="testLoad()">测试加载数据</button>
+    <div id="output"></div>
+    
+    <script>
+        function log(msg) {
+            const div = document.getElementById('output');
+            div.innerHTML += '<p>' + new Date().toLocaleTimeString() + ': ' + msg + '</p>';
+            console.log(msg);
+        }
+        
+        async function testGenerate() {
+            log('开始测试生成数据...');
+            try {
+                const history = await RadiationAPI.loadData();
+                log('加载历史数据: ' + history.length + ' 条');
+                
+                const newRecords = generateTestData_fromUtils(10);
+                log('生成新记录: ' + newRecords.length + ' 条');
+                log('新记录示例: ' + JSON.stringify(newRecords[0]));
+                
+                const allRecords = [...history, ...newRecords];
+                log('合并后总记录: ' + allRecords.length + ' 条');
+                
+                setStorageItem(CONFIG.STORAGE_KEY, allRecords);
+                log('已写入 localStorage');
+                
+                // 检查 localStorage
+                const stored = getStorageItem(CONFIG.STORAGE_KEY, []);
+                log('从 localStorage 读取: ' + stored.length + ' 条');
+                
+                if (stored.length > 0) {
+                    log('✅ 测试成功！');
+                } else {
+                    log('❌ 测试失败：localStorage 为空');
+                }
+            } catch (e) {
+                log('❌ 错误: ' + e.message);
+                console.error(e);
+            }
+        }
+        
+        async function testLoad() {
+            log('开始测试加载数据...');
+            try {
+                const history = await RadiationAPI.loadData();
+                log('加载结果: ' + history.length + ' 条记录');
+                if (history.length > 0) {
+                    log('第一条: ' + JSON.stringify(history[0]));
+                    log('✅ 加载成功');
+                } else {
+                    log('⚠️ 数据为空');
+                }
+            } catch (e) {
+                log('❌ 错误: ' + e.message);
+                console.error(e);
+            }
+        }
+    </script>
+</body>
+</html>
