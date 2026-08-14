@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>诊断测试 - 海水辐射值监测</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        .section { background: white; padding: 20px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .log { background: #1e1e1e; color: #00ff00; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 12px; max-height: 400px; overflow-y: auto; }
+        .log p { margin: 5px 0; }
+        .error { color: #ff4444 !important; }
+        .warning { color: #ffaa00 !important; }
+        .success { color: #00ff00 !important; }
+        button { padding: 10px 20px; margin: 5px; border: none; border-radius: 5px; background: #4caf50; color: white; cursor: pointer; }
+        button:hover { background: #45a049; }
+        button.danger { background: #f44336; }
+        button.danger:hover { background: #d32f2f; }
+    </style>
+</head>
+<body>
+    <h1>🧪 诊断测试 - 海水辐射值监测</h1>
+    
+    <div class="section">
+        <h3>测试步骤</h3>
+        <button onclick="step1()">1. 测试配置加载</button>
+        <button onclick="step2()">2. 测试工具函数</button>
+        <button onclick="step3()">3. 测试 API 函数</button>
+        <button onclick="step4()">4. 测试生成数据</button>
+        <button onclick="step5()">5. 测试保存数据</button>
+        <button onclick="step6()">6. 测试加载数据</button>
+        <button class="danger" onclick="clearAll()">清除所有测试数据</button>
+        <button onclick="clearLog()">清除日志</button>
+    </div>
+    
+    <div class="section">
+        <h3>测试日志</h3>
+        <div class="log" id="log"></div>
+    </div>
+    
+    <div class="section">
+        <h3>测试结果</h3>
+        <div id="results"></div>
+    </div>
+
+    <!-- 引入模块 -->
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/api.js"></script>
+    
+    <script>
+        let testResults = {};
+        
+        function log(msg, type = 'info') {
+            const div = document.getElementById('log');
+            const p = document.createElement('p');
+            p.className = type;
+            p.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            div.appendChild(p);
+            div.scrollTop = div.scrollHeight;
+            console.log(msg);
+        }
+        
+        function step1() {
+            log('=== 步骤 1: 测试配置加载 ===');
+            try {
+                log('CONFIG.GIST_ID: ' + CONFIG.GIST_ID, 'success');
+                log('CONFIG.OWNER: ' + CONFIG.OWNER, 'success');
+                log('CONFIG.STORAGE_KEY: ' + CONFIG.STORAGE_KEY, 'success');
+                log('CONFIG.MAX_RECORDS: ' + CONFIG.MAX_RECORDS, 'success');
+                testResults.config = true;
+            } catch (e) {
+                log('❌ 配置加载失败: ' + e.message, 'error');
+                testResults.config = false;
+            }
+        }
+        
+        function step2() {
+            log('=== 步骤 2: 测试工具函数 ===');
+            try {
+                // 测试 generateTestData_fromUtils
+                const records = generateTestData_fromUtils(5);
+                log('✅ 生成 5 条测试数据成功', 'success');
+                log('   示例: ' + JSON.stringify(records[0]), 'success');
+                
+                // 测试 validateRecord
+                const valid = validateRecord(records[0]);
+                log('✅ 数据验证成功: ' + JSON.stringify(valid), 'success');
+                
+                // 测试 localStorage 函数
+                setStorageItem('test_key', 'test_value');
+                const stored = getStorageItem('test_key', 'default');
+                log('✅ localStorage 读写测试: ' + stored, 'success');
+                removeStorageItem('test_key');
+                log('✅ localStorage 删除测试成功', 'success');
+                
+                testResults.utils = true;
+            } catch (e) {
+                log('❌ 工具函数测试失败: ' + e.message, 'error');
+                log('   错误详情: ' + e.stack, 'error');
+                testResults.utils = false;
+            }
+        }
+        
+        function step3() {
+            log('=== 步骤 3: 测试 API 函数 ===');
+            try {
+                log('Testing RadiationAPI.getAuthToken()...');
+                const token = RadiationAPI.getAuthToken();
+                log('   Token: ' + (token ? '已设置 (' + token.substring(0, 10) + '...)' : '未设置'), token ? 'success' : 'warning');
+                
+                log('Testing RadiationAPI.validateToken()...');
+                // 不实际验证，只检查函数是否存在
+                if (typeof RadiationAPI.validateToken === 'function') {
+                    log('✅ RadiationAPI.validateToken 函数存在', 'success');
+                } else {
+                    log('❌ RadiationAPI.validateToken 函数不存在', 'error');
+                }
+                
+                if (typeof RadiationAPI.loadData === 'function') {
+                    log('✅ RadiationAPI.loadData 函数存在', 'success');
+                } else {
+                    log('❌ RadiationAPI.loadData 函数不存在', 'error');
+                }
+                
+                testResults.api = true;
+            } catch (e) {
+                log('❌ API 函数测试失败: ' + e.message, 'error');
+                testResults.api = false;
+            }
+        }
+        
+        function step4() {
+            log('=== 步骤 4: 测试生成数据 ===');
+            try {
+                const history = RadiationAPI.loadDataSync ? RadiationAPI.loadDataSync() : getStorageItem(CONFIG.STORAGE_KEY, []);
+                log('当前 localStorage 中有 ' + history.length + ' 条数据', history.length > 0 ? 'success' : 'warning');
+                
+                const newRecords = generateTestData_fromUtils(10);
+                log('✅ 生成 10 条新数据成功', 'success');
+                log('   第一条: ' + JSON.stringify(newRecords[0]), 'success');
+                
+                testResults.generate = true;
+            } catch (e) {
+                log('❌ 生成数据失败: ' + e.message, 'error');
+                testResults.generate = false;
+            }
+        }
+        
+        function step5() {
+            log('=== 步骤 5: 测试保存数据 ===');
+            try {
+                const history = getStorageItem(CONFIG.STORAGE_KEY, []);
+                const newRecords = generateTestData_fromUtils(10);
+                const allRecords = [...history, ...newRecords];
+                
+                setStorageItem(CONFIG.STORAGE_KEY, allRecords);
+                log('✅ 数据保存到 localStorage 成功', 'success');
+                log('   当前总数据量: ' + allRecords.length + ' 条', 'success');
+                
+                // 验证保存
+                const verified = getStorageItem(CONFIG.STORAGE_KEY, []);
+                log('   验证读取: ' + verified.length + ' 条', verified.length === allRecords.length ? 'success' : 'error');
+                
+                testResults.save = true;
+            } catch (e) {
+                log('❌ 保存数据失败: ' + e.message, 'error');
+                testResults.save = false;
+            }
+        }
+        
+        async function step6() {
+            log('=== 步骤 6: 测试加载数据 ===');
+            try {
+                const history = await RadiationAPI.loadData();
+                log('✅ 数据加载成功', 'success');
+                log('   数据量: ' + history.length + ' 条', 'success');
+                
+                if (history.length > 0) {
+                    log('   第一条: ' + JSON.stringify(history[0]), 'success');
+                    log('   最后一条: ' + JSON.stringify(history[history.length - 1]), 'success');
+                }
+                
+                testResults.load = true;
+            } catch (e) {
+                log('❌ 加载数据失败: ' + e.message, 'error');
+                log('   错误详情: ' + e.stack, 'error');
+                testResults.load = false;
+            }
+        }
+        
+        function clearAll() {
+            if (confirm('确定要清除所有测试数据吗？')) {
+                removeStorageItem(CONFIG.STORAGE_KEY);
+                log('✅ 已清除所有测试数据', 'success');
+            }
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+        
+        // 自动运行所有测试
+        window.addEventListener('load', function() {
+            log('🚀 诊断测试页面已加载', 'success');
+            log('请点击按钮逐步测试，或直接访问 test.html 页面进行测试', 'warning');
+        });
+    </script>
+</body>
+</html>
