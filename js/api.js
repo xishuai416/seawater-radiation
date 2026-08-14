@@ -52,34 +52,36 @@ async function validateToken(token) {
 }
 
 /**
- * 获取数据（优先从 Gist，回退到 localStorage）
+ * 获取数据（无需 Token 即可公开读取 Gist，如果有 Token 则带上，读取失败时回退到 localStorage）
  * @returns {Promise<Array>} 记录数组
  */
 async function loadData() {
   const token = getAuthToken();
   
-  // 如果有 token，尝试从 GitHub 获取
+  // 构建请求头：未登录时不传 Authorization 也可以公开读取 public/secret Gist
+  const headers = {
+    'Accept': 'application/vnd.github.v3+json'
+  };
   if (token) {
-    try {
-      const res = await fetch(`https://gist.github.com/api/v1/gists/${CONFIG.GIST_ID}`, {
-        headers: {
-          'Authorization': `token ${token}`,
-          'Accept': 'application/vnd.github.v3+json'
-        }
-      });
-      
-      if (res.ok) {
-        const data = await res.json();
-        if (data.files && data.files['history.json']) {
-          const parsed = JSON.parse(data.files['history.json'].content);
-          // 同步到 localStorage（仅数据，不含 Token）
-          setStorageItem(CONFIG.STORAGE_KEY, parsed.records || []);
-          return parsed.records || [];
-        }
+    headers['Authorization'] = `token ${token}`;
+  }
+
+  try {
+    const res = await fetch(`${CONFIG.API_BASE}/gists/${CONFIG.GIST_ID}`, { headers });
+    
+    if (res.ok) {
+      const data = await res.json();
+      if (data.files && data.files['history.json']) {
+        const parsed = JSON.parse(data.files['history.json'].content);
+        // 同步缓存到 localStorage
+        setStorageItem(CONFIG.STORAGE_KEY, parsed.records || []);
+        return parsed.records || [];
       }
-    } catch (e) {
-      console.warn('从 Gist 获取失败:', e);
+    } else {
+      console.warn(`Gist 请求返回状态码: ${res.status}`);
     }
+  } catch (e) {
+    console.warn('从 Gist 获取失败，尝试回退:', e);
   }
   
   // 回退到 localStorage
@@ -121,7 +123,7 @@ async function saveData(record) {
   // 尝试保存到 GitHub Gist
   if (token) {
     try {
-      const res = await fetch(`https://api.github.com/gists/${CONFIG.GIST_ID}`, {
+      const res = await fetch(`${CONFIG.API_BASE}/gists/${CONFIG.GIST_ID}`, {
         method: 'PATCH',
         headers: {
           'Authorization': `token ${token}`,
@@ -164,7 +166,7 @@ async function clearAllData() {
   // 尝试清除 GitHub Gist
   if (token) {
     try {
-      const res = await fetch(`https://api.github.com/gists/${CONFIG.GIST_ID}`, {
+      const res = await fetch(`${CONFIG.API_BASE}/gists/${CONFIG.GIST_ID}`, {
         method: 'PATCH',
         headers: {
           'Authorization': `token ${token}`,
